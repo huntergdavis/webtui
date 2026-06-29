@@ -47,8 +47,15 @@ async function tick() {
 
   const stats = $("boot-stats");
   if (stats) {
-    const rateStr = peakRate > 0 ? ` · ~${(peakRate / (1024 * 1024)).toFixed(1)} MB/s` : "";
-    stats.textContent = `${fmtMB(downloaded)} downloaded · ${elapsed.toFixed(0)}s${rateStr}`;
+    // Only show MB once it's meaningfully > 0 — storage.estimate() is the only no-SW
+    // signal for disk download and may stay flat (rounded, or reads not cached), in which
+    // case a "0.0 MB" reading looks broken. Fall back to an honest elapsed-time message.
+    if (downloaded > 0.1 * 1024 * 1024) {
+      const rateStr = peakRate > 0 ? ` · ~${(peakRate / (1024 * 1024)).toFixed(1)} MB/s` : "";
+      stats.textContent = `${fmtMB(downloaded)} downloaded · ${elapsed.toFixed(0)}s${rateStr}`;
+    } else {
+      stats.textContent = `Working… ${elapsed.toFixed(0)}s elapsed (compiling + streaming on demand)`;
+    }
   }
 }
 

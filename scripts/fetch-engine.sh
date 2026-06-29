@@ -25,8 +25,14 @@ FILES=(
   cx.esm.js cx_esm.js
   cheerpOS.js cxbridge.js cxcore.js cxcore-no-return-call.js workerclock.js
   cxcore.wasm cxcore-no-return-call.wasm
-  tun/tailscale_tun_auto.js
-  fail.wasm cxbridge.wasm cheerpOS.wasm tun/tailscale_tun_auto.wasm
+  fail.wasm cxbridge.wasm cheerpOS.wasm
+  # tun/ network backend: imported eagerly at engine init (direct.js -> tailscale_tun_auto
+  # -> tailscale_tun -> wasm_exec + ipstack), so ALL of these must be present or boot dies
+  # with "Failed to fetch dynamically imported module" even before networking. The big
+  # wasms (tailscale 18.7MB, ipstack 266KB) load when networking actually starts (Phase 5).
+  tun/direct.js tun/tailscale_tun_auto.js tun/tailscale_tun.js
+  tun/wasm_exec.js tun/ipstack.js
+  tun/ipstack.wasm tun/tailscale.wasm
 )
 
 sri() { printf 'sha384-%s' "$(openssl dgst -sha384 -binary "$1" | openssl base64 -A)"; }

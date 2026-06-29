@@ -36,6 +36,30 @@ export function ensureCrossOriginIsolated() {
   }
 }
 
+// Surface otherwise-silent failures (uncaught errors, rejected promises from the engine
+// or workers) instead of leaving the user with a frozen overlay (R14 legibility).
+const _diag = [];
+function recordDiag(label, detail) {
+  const line = `${label}: ${detail}`;
+  _diag.push(line);
+  console.error("[webtui]", line);
+  // Mirror into a hidden DOM node so headless/inspection can read it.
+  let el = document.getElementById("diag");
+  if (!el) {
+    el = document.createElement("pre");
+    el.id = "diag";
+    el.style.display = "none";
+    document.body.appendChild(el);
+  }
+  el.textContent = _diag.join("\n");
+}
+window.addEventListener("error", (e) =>
+  recordDiag("window.error", `${e.message} @ ${e.filename}:${e.lineno}:${e.colno}`)
+);
+window.addEventListener("unhandledrejection", (e) =>
+  recordDiag("unhandledrejection", String((e.reason && (e.reason.stack || e.reason.message)) || e.reason))
+);
+
 async function main() {
   // 1. The gate that blocks everything else.
   try {

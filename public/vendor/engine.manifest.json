@@ -11,10 +11,15 @@
     "workerclock.js": "sha384-q1QfNxsmgb/KzqKkRMZiWRwKrDODwHF39accIHWrBDfetxBnWW4uQt59v0tjrgRX",
     "cxcore.wasm": "sha384-+X4PHR1FMVjsm6o215DGBIiTfPrSfA0u7+H1E5zY2aYIBWndkt27tp3oqT72L903",
     "cxcore-no-return-call.wasm": "sha384-18wXNym/BoiLF7XnBYQ4aCH1+9jCU1WE5OSxSaQ8M3uj97IvjGOG6pM9oPEKClVK",
-    "tun/tailscale_tun_auto.js": "sha384-Xzl+Eq8w2K9sE1b/3finrjV/OIvXGQq3FA7/5d3/7Ap6gOFwaSIemW0gYeLBbWWq",
     "fail.wasm": "sha384-OLBgp1GsljhM2TJ+sbHjaiH9txEUvgdDTAzHv2P24donTt6/529l+9Ua0vFImLlb",
     "cxbridge.wasm": "sha384-OLBgp1GsljhM2TJ+sbHjaiH9txEUvgdDTAzHv2P24donTt6/529l+9Ua0vFImLlb",
     "cheerpOS.wasm": "sha384-OLBgp1GsljhM2TJ+sbHjaiH9txEUvgdDTAzHv2P24donTt6/529l+9Ua0vFImLlb",
-    "tun/tailscale_tun_auto.wasm": "sha384-OLBgp1GsljhM2TJ+sbHjaiH9txEUvgdDTAzHv2P24donTt6/529l+9Ua0vFImLlb"
+    "tun/direct.js": "sha384-JTek+yup9GF3dZGJYpoEvLVcnM9Ht8xixVakTkL10CNotuEcM+UR4d5lsjdq9lxH",
+    "tun/tailscale_tun_auto.js": "sha384-Xzl+Eq8w2K9sE1b/3finrjV/OIvXGQq3FA7/5d3/7Ap6gOFwaSIemW0gYeLBbWWq",
+    "tun/tailscale_tun.js": "sha384-L9iFy4a5Y+xhfnavhhGAGWmiXX0M7Eo78GC+MKifQeJFiKOI4B7AyDAxhne7iKix",
+    "tun/wasm_exec.js": "sha384-KwjovEIUCt0BqP151QPbh8Mp1Wdb6TelOOTotZvkRQWrOIG4OEj2fMs/UysQTu1q",
+    "tun/ipstack.js": "sha384-jvUaenbZ6LgfoJBwMB2nvcDYRWJtvYxW4SMK4v/+Z2eUVaUBxinUfz0PfBi/y/nZ",
+    "tun/ipstack.wasm": "sha384-NtMTpRLXZ37zTi+4+omWYECXoLHF4gGsP/gj+Od5X86qN85XfiUg7kfngMKr0EYz",
+    "tun/tailscale.wasm": "sha384-L8p8SXDvdyejnQuhMaGCR3v87UlOlUmod9R/zn2V3EVt+A3zR1zMCvrQ1sR0PjGn"
   }
 }
