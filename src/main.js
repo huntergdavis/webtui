@@ -29,6 +29,12 @@ export class BootError extends Error {
   }
 }
 
+const ISO_FAIL_MSG =
+  "Not cross-origin isolated — SharedArrayBuffer is unavailable. On GitHub Pages this is " +
+  "provided by coi-serviceworker (needs HTTPS and service workers enabled — a Firefox " +
+  "private window disables them). On a header-capable host, check COOP/COEP (_headers). " +
+  "See PLAN.md §1.";
+
 /**
  * Hard-fail (with a readable message) unless the page is cross-origin isolated.
  * CheerpX needs SharedArrayBuffer, granted only under COOP: same-origin +
@@ -37,11 +43,7 @@ export class BootError extends Error {
  */
 export function ensureCrossOriginIsolated() {
   if (!self.crossOriginIsolated || typeof SharedArrayBuffer === "undefined") {
-    throw new BootError(
-      "Not cross-origin isolated — SharedArrayBuffer is unavailable. " +
-        "Check COOP/COEP response headers (_headers), use HTTPS, and load over a " +
-        "header-capable host (Cloudflare/Netlify). See PLAN.md §1."
-    );
+    throw new BootError(ISO_FAIL_MSG);
   }
 }
 
@@ -179,16 +181,45 @@ function wireNetworking(cx) {
   }
 }
 
+/** sessionStorage that no-ops in private modes where it throws. */
+function sget(k) { try { return sessionStorage.getItem(k); } catch { return null; } }
+function sset(k, v) { try { sessionStorage.setItem(k, v); } catch { /* ignore */ } }
+function srem(k) { try { sessionStorage.removeItem(k); } catch { /* ignore */ } }
+
+const ISO_WAIT = "webtuiIsoWait";
+
 async function main() {
-  // 1. The gate that blocks everything else.
-  try {
-    ensureCrossOriginIsolated();
-  } catch (err) {
-    console.error(err);
+  // 1. The gate that blocks everything else. On GitHub Pages the coi-serviceworker shim
+  //    enables isolation via a one-time service-worker registration + reload, so the FIRST
+  //    load arrives not-yet-isolated. Treat that as "setting up" (the page will reload),
+  //    not a hard error — only fail loudly once a reload has happened and it's still off,
+  //    or if the SW can't take over (private mode) within a short grace window.
+  if (!self.crossOriginIsolated || typeof SharedArrayBuffer === "undefined") {
+    if (!sget(ISO_WAIT) && "serviceWorker" in navigator && self.isSecureContext) {
+      sset(ISO_WAIT, "1");
+      setStatus("status-isolation", "enabling…", "warn");
+      showBanner(
+        "Enabling cross-origin isolation (one-time service-worker setup); the page will " +
+          "reload automatically…",
+        "ok"
+      );
+      // If the SW never takes over (e.g. Firefox private mode disables it), the reload
+      // won't come — surface the real error instead of hanging on "enabling…".
+      setTimeout(() => {
+        if (!self.crossOriginIsolated) {
+          setStatus("status-isolation", "NOT isolated", "error");
+          showBanner(new BootError(ISO_FAIL_MSG).message, "error");
+        }
+      }, 4000);
+      return;
+    }
+    // Either a reload already happened and it's still off, or no SW path is available.
+    console.error("cross-origin isolation unavailable");
     setStatus("status-isolation", "NOT isolated", "error");
-    showBanner(err instanceof BootError ? err.message : String(err), "error");
+    showBanner(ISO_FAIL_MSG, "error");
     return;
   }
+  srem(ISO_WAIT);
   console.log("crossOriginIsolated ===", self.crossOriginIsolated);
   setStatus("status-isolation", "isolated", "ok");
 

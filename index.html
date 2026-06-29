@@ -3,6 +3,19 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+
+    <!-- Cross-origin isolation on GitHub Pages (which can't set COOP/COEP headers): the
+         coi-serviceworker shim injects them client-side so crossOriginIsolated === true and
+         CheerpX's SharedArrayBuffer works. MUST load before the app module. On a header-
+         capable host (Cloudflare/Netlify via _headers) it's a harmless no-op (already
+         isolated). %BASE_URL% resolves to the deploy base (e.g. /webtui/). -->
+    <script src="%BASE_URL%coi-serviceworker.js"></script>
+
+    <!-- CSP for Pages, where response-header CSP isn't available; mirrors public/_headers
+         minus header-only directives (frame-ancestors/XFO — see README Phase 8 note). All
+         heavy assets (engine, disk) are same-origin, so connect-src only adds Tailscale. -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://*.tailscale.com wss://*.tailscale.com https://login.tailscale.com; worker-src 'self' blob:; child-src 'self' blob:; base-uri 'self'; form-action 'self'" />
+
     <title>webtui — browser Linux terminal</title>
     <meta
       name="description"

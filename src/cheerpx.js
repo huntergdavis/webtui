@@ -7,7 +7,9 @@
 // version fetched by scripts/fetch-engine.sh; integrity recorded in engine.manifest.json.
 
 export const ENGINE_VERSION = "1.2.8";
-export const ENGINE_URL = "/vendor/cx.esm.js";
+// Base-aware so it resolves under a GitHub Pages project path (e.g. /webtui/vendor/…) as
+// well as at root. The engine then resolves its own relative assets against this URL.
+export const ENGINE_URL = import.meta.env.BASE_URL + "vendor/cx.esm.js";
 
 let _promise;
 

@@ -147,14 +147,24 @@ and the font/contrast options visibly work.
 
 ---
 
-## Phase 8 — Deploy
-1. `vite build` → `dist/`.
-2. Deploy to Cloudflare Pages; confirm `_headers` applied (check response headers in DevTools).
-3. Custom domain + HTTPS + HSTS; enable DNSSEC/CAA on the domain (R-S3).
+## Phase 8 — Deploy (GitHub Pages only, no server)
+Implemented in `.github/workflows/deploy.yml` — see the README "Deploy" section for the
+full rationale. Key points:
+1. One-time: repo **Settings → Pages → Source = GitHub Actions**.
+2. CI builds the engine (`fetch-engine.sh`) + disk (`build-disk.sh full|lite`) + app
+   (`vite build`, base `/<repo>/`) and deploys `dist/` via `upload-pages-artifact` +
+   `deploy-pages`. The disk ships **inside the Pages artifact, not git** (sidesteps the
+   100 MB push limit; keeps the disk **same-origin** → no CORS).
+3. Cross-origin isolation comes from `public/coi-serviceworker.js` (Pages can't set
+   COOP/COEP). CSP via `<meta>`; `frame-ancestors`/XFO unavailable on Pages (documented gap).
 4. Run the TEST_PLAN platform matrix.
 
-🧪 **Done when:** production URL boots in Firefox on a **fresh machine**, you auth Tailscale,
-unlock the vault, and `git push` works — with no local installs.
+> Header-capable hosts (Cloudflare Pages/Netlify) remain supported via `public/_headers`
+> — but their per-file caps (CF Pages: 25 MiB) can't hold the disk, so GitHub Pages +
+> in-CI same-origin disk is the chosen path.
+
+🧪 **Done when:** the Pages URL boots in Firefox on a **fresh machine** (coi-serviceworker
+makes it isolated), you auth Tailscale, unlock the vault, and `git push` works — no installs.
 
 ---
 

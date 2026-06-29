@@ -9,10 +9,16 @@
 import { loadCheerpX } from "./cheerpx.js";
 import { buildNetworkInterface } from "./net.js";
 
-/** Disk image URLs (served from public/disk/, range-enabled). */
+/**
+ * Disk image URLs (served same-origin from <base>disk/, range-enabled). Base-aware so they
+ * resolve under a GitHub Pages project path. Same-origin is deliberate: it sidesteps CORS
+ * entirely (Release assets / third-party hosts don't send Access-Control-Allow-Origin, so a
+ * cross-origin ranged read would be blocked). The disk is deployed via the Pages Actions
+ * workflow, not committed to git, so the 100 MB git-push limit doesn't apply.
+ */
 export const DISK_URLS = {
-  full: "/disk/debian.ext2",
-  lite: "/disk/debian-lite.ext2",
+  full: import.meta.env.BASE_URL + "disk/debian.ext2",
+  lite: import.meta.env.BASE_URL + "disk/debian-lite.ext2",
 };
 
 /**

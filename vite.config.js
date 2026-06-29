@@ -20,9 +20,11 @@ const coiHeaders = {
 function diskMiddleware() {
   return (req, res, next) => {
     const url = (req.url || "").split("?")[0];
-    if (!url.startsWith("/disk/") || !url.endsWith(".ext2")) return next();
+    // Match "/disk/<name>.ext2" regardless of the configured base (e.g. /webtui/disk/…).
+    const idx = url.indexOf("/disk/");
+    if (idx === -1 || !url.endsWith(".ext2")) return next();
     let st;
-    const file = resolve(process.cwd(), "public", url.replace(/^\//, ""));
+    const file = resolve(process.cwd(), "public", url.slice(idx + 1));
     try {
       st = statSync(file);
     } catch {
@@ -60,8 +62,12 @@ const diskPlugin = {
 };
 
 export default defineConfig({
-  // public/ holds deploy-time static assets served at root and copied to dist/ as-is:
-  // _headers, the self-hosted vendor/ engine, and the disk/ images.
+  // GitHub Pages project site serves at https://<user>.github.io/<repo>/, so assets must
+  // be base-prefixed. Default to the repo path; override VITE_BASE=/ for a custom domain
+  // or user/org page. All runtime URLs (engine, disk, SW) use import.meta.env.BASE_URL.
+  base: process.env.VITE_BASE || "/webtui/",
+  // public/ holds deploy-time static assets served at <base> and copied to dist/ as-is:
+  // _headers, coi-serviceworker.js, the self-hosted vendor/ engine, and the disk/ images.
   publicDir: "public",
   plugins: [diskPlugin],
   server: { headers: coiHeaders },

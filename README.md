@@ -59,13 +59,29 @@ high-contrast settings + a touch soft-key bar). See [IMPLEMENTATION.md](IMPLEMEN
 Phases 5–6 carry live gates that need your accounts (a tailnet + exit node; GitHub) and an
 image rebuild; the code is in place but those end-to-end runs are unverified here.
 
-**Phase 8 (deploy) caveat:** Cloudflare Pages caps assets at **25 MiB/file**, so the
-~300–360 MB disk images **cannot** be served from Pages. Host the `.ext2` on object
-storage (e.g. **Cloudflare R2**) with HTTP range + `Last-Modified`/`ETag`, and — because
-the page is COEP `require-corp` — send `Cross-Origin-Resource-Policy: cross-origin` (or
-CORS with `Access-Control-Expose-Headers: Content-Range, Last-Modified, ETag`). If the
-disk lives on a different origin than the app, add that origin to CSP `connect-src`.
-Same-origin (one host serving both app + disk with range) avoids all of this.
+## Deploy — GitHub Pages only, no server (Phase 8)
+The whole thing ships on GitHub with no backend, via `.github/workflows/deploy.yml`:
+- **App** → GitHub Pages (project site at `https://<user>.github.io/<repo>/`; Vite `base`
+  defaults to `/webtui/`, override with `VITE_BASE=/` for a custom domain / user page).
+- **Disk** → built **in CI** and published inside the Pages artifact, **not committed to
+  git**. That sidesteps git's 100 MB/file push limit *and* keeps the disk **same-origin**
+  with the app, so `HttpBytesDevice`'s ranged reads need no CORS. (GitHub Release assets
+  were ruled out: `release-assets.githubusercontent.com` sends no `Access-Control-Allow-
+  Origin`, so a cross-origin ranged read is blocked.) Published site stays under the 1 GB
+  Pages limit (full 359 MB + lite 304 MB + engine ≈ 670 MB).
+- **Cross-origin isolation** → Pages can't set COOP/COEP response headers, so
+  `public/coi-serviceworker.js` (pinned, reviewed) injects them client-side; the app shows
+  "enabling isolation…" during its one-time registration + reload. CSP is delivered via a
+  `<meta>` tag (header-only directives like `frame-ancestors`/`X-Frame-Options` aren't
+  available on Pages — a documented, accepted gap for this single-user tool).
+
+**One-time repo setup:** Settings → Pages → Build and deployment → **Source = GitHub
+Actions**. Then every push to `main` builds the engine + disk + app and deploys.
+
+> Not yet verified end-to-end on a live Pages deployment (CI disk build + the 1 GB
+> artifact + range serving through Pages' CDN). Run the workflow once and confirm the boot
+> in Firefox; if a per-file serving limit ever bites, the fallback is to chunk the `.ext2`
+> behind a stitching service worker (still same-origin, still GitHub-only).
 
 ## Key constraints
 - Client-side only · runs in **Firefox** (primary) and Chrome/Chromebook · works on M1 and ARM ·

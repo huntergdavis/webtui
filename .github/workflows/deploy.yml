@@ -1,0 +1,80 @@
+# Deploy webtui to GitHub Pages — fully GitHub-only, no server.
+#
+# The disk image (~300–360 MB) is built HERE in CI and published as part of the Pages
+# artifact, NOT committed to git — that sidesteps the 100 MB git-push limit while keeping
+# the disk SAME-ORIGIN with the app (so HttpBytesDevice's ranged reads need no CORS).
+# Cross-origin isolation on Pages comes from coi-serviceworker (COOP/COEP can't be set as
+# response headers on Pages). Published site stays under the 1 GB Pages limit.
+#
+# One-time repo setup: Settings -> Pages -> Build and deployment -> Source = GitHub Actions.
+
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never run two deploys at once; let an in-progress run finish (don't cancel a deploy).
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install image-build tools (mkfs.ext2, fakeroot)
+        run: sudo apt-get update && sudo apt-get install -y e2fsprogs fakeroot
+
+      # Register binfmt handlers so the i386 Debian build runs reliably on the amd64 runner.
+      - uses: docker/setup-qemu-action@v3
+
+      - name: Install pinned deps
+        run: npm ci
+
+      - name: Vendor the pinned CheerpX engine (-> public/vendor) and verify integrity
+        run: |
+          scripts/fetch-engine.sh
+          scripts/fetch-engine.sh verify
+
+      - name: Build disk images (-> public/disk/*.ext2)
+        run: |
+          scripts/build-disk.sh full
+          scripts/build-disk.sh lite
+
+      # Optional: self-host the OpenDyslexic webfont (non-fatal if the source is unreachable).
+      - name: Fetch legible font (optional)
+        run: scripts/fetch-fonts.sh || echo "skipping font (fallback stack will be used)"
+
+      - name: Build the app (base = /<repo>/ for the project Pages site)
+        run: npm run build
+
+      - name: Report published size (must stay under the 1 GB Pages limit)
+        run: du -sh dist && du -ah dist/disk dist/vendor | sort -h | tail -n 20
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
