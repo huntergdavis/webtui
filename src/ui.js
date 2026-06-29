@@ -44,3 +44,19 @@ export function setButtonEnabled(id, enabled) {
   const el = document.getElementById(id);
   if (el) el.disabled = !enabled;
 }
+
+/**
+ * Human-readable bytes (base-1024, matching how browsers report storage quota).
+ * @param {number} n
+ * @returns {string}
+ */
+export function formatBytes(n) {
+  if (!n || n < 0) return "0 B";
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let i = 0;
+  while (n >= 1024 && i < units.length - 1) {
+    n /= 1024;
+    i++;
+  }
+  return `${n < 10 && i > 0 ? n.toFixed(1) : Math.round(n)} ${units[i]}`;
+}

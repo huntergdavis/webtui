@@ -104,6 +104,14 @@ button:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+button.danger {
+  border-color: #6b2b2b;
+  color: #f3b0b0;
+}
+button.danger:hover:not(:disabled) {
+  border-color: #c0392b;
+  color: #ffd6d6;
+}
 
 .screen {
   position: relative; /* anchor the boot overlay */

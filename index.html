@@ -20,6 +20,10 @@
       <div class="controls">
         <button id="btn-connect" type="button" disabled>Connect (Tailscale)</button>
         <button id="btn-unlock" type="button" disabled>Unlock vault</button>
+        <button id="btn-reset" type="button" class="danger" disabled
+          title="Delete the writable overlay and reboot from a pristine disk">
+          Factory reset
+        </button>
       </div>
     </header>
 
@@ -43,6 +47,10 @@
       <span class="status-item">
         <span class="status-label">Isolation:</span>
         <span id="status-isolation" class="status-value">checking…</span>
+      </span>
+      <span class="status-item">
+        <span class="status-label">Memory:</span>
+        <span id="status-memory" class="status-value">—</span>
       </span>
       <span class="status-item">
         <span class="status-label">Storage:</span>
