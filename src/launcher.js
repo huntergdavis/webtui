@@ -349,8 +349,9 @@ async function launchOffline(plan, io, runBtn) {
     io.type("\x15");
     io.type(plan.runLine + "\n");
     showBanner(
-      `Launching ${plan.name} (offline) — watch the terminal. A big app may take ` +
-        `30–60s to unpack and import the first time; it gets faster after.`,
+      `Launching ${plan.name} (offline) — watch the terminal. A big app (e.g. a Textual ` +
+        `app) can take a minute or two on a fresh boot while the disk streams on demand; ` +
+        `it's much faster on later runs.`,
       "ok"
     );
   } catch (err) {
