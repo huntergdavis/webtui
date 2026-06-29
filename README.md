@@ -39,6 +39,22 @@ URL params: `?app=owner/repo` (or a full `https://…/webtui.json`), optional `&
 and `&manifest=path/to/file.json`. **Security:** a `?app=` link is untrusted — nothing runs
 until you click, and every command is shown first (the VM may be on your tailnet, R2).
 
+### Offline mode — no Tailscale (recommended for dependency-free TUIs)
+Cloning needs the tunnel, but the **page** can fetch your repo over CORS even when the VM
+has no network. Set `"offline": true` and webtui downloads your files (the page lists them
+via the GitHub API, skipping images/README/LICENSE), packs them into a tar, writes it into
+an in-memory device, and the guest extracts + runs — **with Tailscale offline**:
+
+```json
+{ "name": "labrync", "description": "Maze screensaver.", "offline": true,
+  "run": "python3 labrync.py -a" }
+```
+
+Optional: `"files": ["a.py","pkg/b.py"]` (explicit list, skips the API), `"exclude":
+["docs/*"]`, `"env": {"PYTHONPATH": "."}`, `"workdir"`. Limitation: offline can't `apt`/
+`pip install`, so it suits **stdlib-only** apps (or repos that vendor their deps into the
+fetched files). Apps needing package installs should stay on the network (clone) path.
+
 ## Documents
 - **[research.md](research.md)** — is this possible, and the alternatives (the "why").
 - **[PLAN.md](PLAN.md)** — full design, function-level, plus a multi-round red team.

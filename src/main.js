@@ -248,7 +248,7 @@ async function main() {
     // The overlay now exists, so a reset is meaningful — enable the button.
     wireFactoryReset();
     setBootTitle("Booting Debian — streaming disk…");
-    const cx = await initVM(storage, { image: budget.image });
+    const { cx, appDev } = await initVM(storage, { image: budget.image });
     // Tear the overlay down the moment the VM produces its first byte of output.
     const termIO = wireTerminalToVM(cx, term, {
       onFirstOutput: stopBootProgress,
@@ -262,7 +262,8 @@ async function main() {
       paste: termIO.paste,
     });
     // ?app=owner/repo -> fetch the repo's webtui.json and offer to install + run it.
-    initLauncher({ type: termIO.type, connect: () => connectNetwork(cx) });
+    // appDev lets offline apps be written straight into the guest (no Tailscale).
+    initLauncher({ type: termIO.type, connect: () => connectNetwork(cx), appDev });
     term.focus();
     // Resolves only when the shell exits; if it does, tell the user rather than hang.
     const { status } = await startShell(cx);

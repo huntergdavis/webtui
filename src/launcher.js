@@ -16,11 +16,18 @@ import { showBanner } from "./ui.js";
 import { isConnected, whenRunning } from "./net.js";
 
 /** Manifest schema (all optional except name):
- *   { name, description, repo, network (default true), apt:[], install:string|[],
- *     run:string|[], workdir }
+ *   Online (clone over Tailscale):
+ *     { name, description, repo, network (default true), apt:[], install:string|[],
+ *       run:string|[], workdir }
+ *   Offline (NO Tailscale — the page fetches files over CORS and writes them into an
+ *   in-memory device mounted at /opt; for dependency-free apps, or apps whose deps are
+ *   vendored into the listed files):
+ *     { name, description, offline:true, files:["a.py","sub/b.py"], ref, env:{K:"V"},
+ *       run:string|[] }
  */
 
 const RAW = "https://raw.githubusercontent.com";
+const APP_MNT = "/opt"; // where the app DataDevice is mounted (see vm.js)
 
 function toArray(v) {
   if (!v) return [];
@@ -108,7 +115,85 @@ export async function initLauncher(io) {
     return;
   }
 
-  renderPanel(buildPlan(app, params, manifest), io);
+  if (manifest.offline) {
+    let plan;
+    try {
+      plan = await buildOfflinePlan(app, params, manifest);
+    } catch (err) {
+      showLauncherError(
+        `Couldn't list files for offline launch (${err.message}). Add an explicit ` +
+          `"files": [...] list to webtui.json.`
+      );
+      return;
+    }
+    renderOfflinePanel(plan, io);
+  } else {
+    renderPanel(buildPlan(app, params, manifest), io);
+  }
+}
+
+// Skip non-code/large assets when auto-discovering a repo's files.
+const SKIP = [
+  /^\.git/,
+  /(^|\/)screenshots?\//i,
+  /(^|\/)(LICEN[CS]E|README)(\.|$)/i,
+  /^webtui\.json$/,
+  /\.(png|jpe?g|gif|webp|bmp|ico|svg|mp4|webm|mov|zip|gz|tgz|tar|7z|rar|pdf|woff2?|ttf|otf|mp3|wav|exe|bin)$/i,
+];
+const MAX_FILE = 2 * 1024 * 1024; // skip blobs > 2 MB
+const MAX_FILES = 300;
+
+function globToRe(g) {
+  return new RegExp("^" + g.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*") + "$");
+}
+
+/** List a repo's code files via the GitHub trees API (CORS-enabled), minus assets. */
+async function discoverFiles(gh, ref, m) {
+  const res = await fetch(
+    `https://api.github.com/repos/${gh.owner}/${gh.repo}/git/trees/${ref}?recursive=1`,
+    { mode: "cors" }
+  );
+  if (!res.ok) throw new Error(`tree HTTP ${res.status}`);
+  const data = await res.json();
+  const extra = toArray(m.exclude).map(globToRe);
+  const files = (data.tree || [])
+    .filter((t) => t.type === "blob" && (t.size || 0) <= MAX_FILE)
+    .map((t) => t.path)
+    .filter((p) => !SKIP.some((re) => re.test(p)) && !extra.some((re) => re.test(p)));
+  if (!files.length) throw new Error("no eligible files found");
+  if (files.length > MAX_FILES) throw new Error(`too many files (${files.length})`);
+  return files;
+}
+
+/** Build the offline plan: which files to fetch over CORS and how to run them. */
+async function buildOfflinePlan(app, params, m) {
+  const gh = parseGitHub(m.repo || app);
+  const ref = params.get("ref") || m.ref || "HEAD";
+  const base = gh ? `${RAW}/${gh.owner}/${gh.repo}/${ref}/` : null;
+  const files = toArray(m.files).length
+    ? toArray(m.files)
+    : gh
+    ? await discoverFiles(gh, ref, m)
+    : [];
+  const env = m.env && typeof m.env === "object" ? m.env : {};
+  const envPrefix = Object.entries(env)
+    .map(([k, v]) => `${k}=${v} `)
+    .join("");
+  const dir = (m.workdir || (gh ? gh.repo : "app")).replace(/[^A-Za-z0-9._-]/g, "_");
+  const extractDir = `/root/${dir}`;
+  // The page writes the tar into /opt (DataDevice: host-writable, guest-READ-only), so the
+  // guest reads it from there but extracts into the writable overlay at /root/<dir>.
+  const runLine =
+    `mkdir -p ${extractDir} && cd ${extractDir} && ` +
+    `tar xf ${APP_MNT}/_webtui_bundle.tar && ${envPrefix}${toArray(m.run).join(" && ")}`;
+  return {
+    name: m.name || (gh ? `${gh.owner}/${gh.repo}` : "app"),
+    description: m.description || "",
+    base,
+    files,
+    extractDir,
+    runLine,
+  };
 }
 
 // ---- UI ------------------------------------------------------------------
@@ -174,6 +259,117 @@ function renderPanel(plan, io) {
   el("launcher-cancel").onclick = () => panel.setAttribute("hidden", "");
 
   panel.removeAttribute("hidden");
+}
+
+function renderOfflinePanel(plan, io) {
+  const panel = el("launcher");
+  if (!panel) return;
+  el("launcher-title").textContent = `Run “${plan.name}” in your browser`;
+  const body = el("launcher-body");
+  body.innerHTML = "";
+
+  if (plan.description) {
+    const d = document.createElement("p");
+    d.className = "launcher-desc";
+    d.textContent = plan.description;
+    body.appendChild(d);
+  }
+  const n = document.createElement("p");
+  n.className = "launcher-net";
+  n.style.color = "var(--ok)";
+  n.textContent = "Runs fully offline — no Tailscale needed.";
+  body.appendChild(n);
+
+  const label = document.createElement("p");
+  label.className = "launcher-label";
+  label.textContent = `Fetches ${plan.files.length} file(s) into ${plan.extractDir}, then runs:`;
+  body.appendChild(label);
+
+  const pre = document.createElement("pre");
+  pre.className = "launcher-cmds";
+  pre.textContent = plan.files.map((f) => `# ${f}`).join("\n") + "\n" + plan.runLine;
+  body.appendChild(pre);
+
+  const runBtn = el("launcher-run");
+  runBtn.hidden = false;
+  runBtn.disabled = false;
+  runBtn.textContent = "Run";
+  runBtn.onclick = () => launchOffline(plan, io, runBtn);
+  el("launcher-cancel").onclick = () => panel.setAttribute("hidden", "");
+  panel.removeAttribute("hidden");
+}
+
+async function launchOffline(plan, io, runBtn) {
+  runBtn.disabled = true;
+  if (!io.appDev) {
+    showBanner("Offline launch unavailable (no app device mounted).", "error");
+    return;
+  }
+  if (!plan.base || !plan.files.length) {
+    showBanner("This offline manifest lists no files to fetch.", "error");
+    return;
+  }
+  try {
+    runBtn.textContent = "Fetching…";
+    // Fetch every file over CORS (page-side; the VM has no network), then pack them into a
+    // single tar so one writeFile reproduces the whole directory tree in the guest —
+    // DataDevice.writeFile can't create parent dirs, but `tar xf` can.
+    const entries = [];
+    for (const f of plan.files) {
+      const rel = f.replace(/^\/+/, "");
+      const res = await fetch(plan.base + rel, { mode: "cors" });
+      if (!res.ok) throw new Error(`${f}: HTTP ${res.status}`);
+      entries.push({ name: rel, bytes: new Uint8Array(await res.arrayBuffer()) });
+    }
+    runBtn.textContent = "Unpacking…";
+    await io.appDev.writeFile("/_webtui_bundle.tar", buildTar(entries));
+
+    el("launcher").setAttribute("hidden", "");
+    document.getElementById("screen")?.querySelector(".xterm-helper-textarea")?.focus();
+    io.type("\x15");
+    io.type(plan.runLine + "\n");
+    showBanner(`Launching ${plan.name} (offline) — watch the terminal.`, "ok");
+  } catch (err) {
+    runBtn.disabled = false;
+    runBtn.textContent = "Run";
+    showBanner(`Offline launch failed: ${String(err && err.message || err)}`, "error");
+  }
+}
+
+/** Minimal ustar tar builder. Paths < 100 chars (fine for typical repos). */
+function buildTar(entries) {
+  const enc = new TextEncoder();
+  const put = (buf, str, off) => buf.set(enc.encode(str), off);
+  const blocks = [];
+  for (const e of entries) {
+    const h = new Uint8Array(512);
+    put(h, e.name.slice(0, 100), 0);
+    put(h, "0000644\0", 100); // mode
+    put(h, "0000000\0", 108); // uid
+    put(h, "0000000\0", 116); // gid
+    put(h, e.bytes.length.toString(8).padStart(11, "0") + "\0", 124); // size[12]
+    put(h, "00000000000\0", 136); // mtime[12]
+    for (let i = 148; i < 156; i++) h[i] = 0x20; // checksum field = spaces while summing
+    h[156] = 0x30; // typeflag '0' (regular file)
+    put(h, "ustar\0", 257);
+    put(h, "00", 263);
+    let sum = 0;
+    for (let i = 0; i < 512; i++) sum += h[i];
+    put(h, sum.toString(8).padStart(6, "0") + "\0 ", 148); // checksum
+    blocks.push(h);
+    const content = new Uint8Array(Math.ceil(e.bytes.length / 512) * 512);
+    content.set(e.bytes, 0);
+    blocks.push(content);
+  }
+  blocks.push(new Uint8Array(512), new Uint8Array(512)); // two zero blocks = EOF
+  const total = blocks.reduce((a, b) => a + b.length, 0);
+  const out = new Uint8Array(total);
+  let o = 0;
+  for (const b of blocks) {
+    out.set(b, o);
+    o += b.length;
+  }
+  return out;
 }
 
 async function launch(plan, io, runBtn) {

@@ -43,11 +43,17 @@ export async function initVM(storage, opts = {}) {
   // never persist to the overlay — the core R1 fix. Mounted as a "dir" device.
   const keysDev = await CheerpX.DataDevice.create();
 
+  // In-memory device for the offline app launcher (?app=). The PAGE fetches a repo's files
+  // over CORS and writes them here with appDev.writeFile(); the guest sees them at /opt
+  // with no VM network — so dependency-free TUIs run without Tailscale. Returned below.
+  const appDev = await CheerpX.DataDevice.create();
+
   const config = {
     mounts: [
       { type: "ext2", path: "/", dev: overlay },
       { type: "devs", path: "/dev" },
       { type: "dir", path: "/run/keys", dev: keysDev },
+      { type: "dir", path: "/opt", dev: appDev },
       // /proc and /sys are provided internally by CheerpX.
     ],
   };
@@ -57,7 +63,7 @@ export async function initVM(storage, opts = {}) {
   }
 
   const cx = await CheerpX.Linux.create(config);
-  return cx;
+  return { cx, appDev };
 }
 
 /**
