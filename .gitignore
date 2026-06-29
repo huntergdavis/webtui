@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.DS_Store
+*.log
+.env
+.env.*
+disk/blocks/
+*.ext2
+vendor/cx*.wasm
+vendor/cx.esm.js
+vendor/tsconnect.wasm
+.vite/
