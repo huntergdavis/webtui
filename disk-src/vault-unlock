@@ -1,0 +1,40 @@
+#!/bin/bash
+# vault-unlock — decrypt ~/.ssh.age into the RAM mount and load the key into ssh-agent
+# with a TTL (PLAN §8.1). The agent listens on a FIXED socket under /run/keys so the host
+# (Lock button / auto-lock) and any shell can find it. Plaintext never touches the overlay.
+set -euo pipefail
+
+VAULT="$HOME/.ssh.age"
+KEYDIR="/run/keys/.ssh"
+SOCK="/run/keys/agent.sock"
+TTL="${VAULT_TTL:-1800}"   # seconds the key stays loaded (default 30 min)
+
+if [ ! -d /run/keys ]; then
+  echo "vault-unlock: /run/keys (RAM mount) is missing — refusing to decrypt to disk." >&2
+  exit 1
+fi
+if [ ! -f "$VAULT" ]; then
+  echo "vault-unlock: no vault at $VAULT. Run 'vault-init' first." >&2
+  exit 1
+fi
+
+umask 077
+mkdir -p /run/keys
+
+echo "==> decrypting vault (enter your age passphrase)"
+age -d "$VAULT" | tar -C /run/keys -xf -
+chmod 700 "$KEYDIR"
+chmod 600 "$KEYDIR"/* 2>/dev/null || true
+
+# Reuse a live agent on the fixed socket, else start one there.
+if [ ! -S "$SOCK" ] || ! SSH_AUTH_SOCK="$SOCK" ssh-add -l >/dev/null 2>&1; then
+  rm -f "$SOCK"
+  eval "$(ssh-agent -a "$SOCK")" >/dev/null
+fi
+export SSH_AUTH_SOCK="$SOCK"
+
+# -t TTL: auto-expire. (Add -c for per-use confirmation if you want a prompt per git op.)
+ssh-add -t "$TTL" "$KEYDIR/id_ed25519"
+
+echo "==> unlocked. Key loaded for ${TTL}s. SSH_AUTH_SOCK=$SOCK"
+echo "    New shells pick up the agent automatically; run 'vault-lock' to clear it."

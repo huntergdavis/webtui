@@ -1,0 +1,48 @@
+#!/bin/bash
+# vault-init — create an SSH keypair and seal it into an age-encrypted archive at rest
+# (PLAN §8.1, the R1 fix). Plaintext keys live ONLY in the RAM mount /run/keys, which the
+# host backs with a CheerpX DataDevice (in-memory, never written to the IndexedDB overlay).
+# At rest, only ciphertext (~/.ssh.age) sits on the persisted disk.
+set -euo pipefail
+
+VAULT="$HOME/.ssh.age"
+KEYDIR="/run/keys/.ssh"
+LINK="$HOME/.ssh"
+
+# /run/keys must be the host's in-memory DataDevice mount — refuse to write plaintext keys
+# anywhere that could be persisted to the overlay.
+if [ ! -d /run/keys ]; then
+  echo "vault-init: /run/keys (RAM mount) is missing — the VM was not booted with the" >&2
+  echo "            DataDevice mount. Refusing to create keys on persistent storage." >&2
+  exit 1
+fi
+
+if [ -f "$VAULT" ]; then
+  echo "vault-init: $VAULT already exists. Use 'vault-unlock' instead, or remove it first." >&2
+  exit 1
+fi
+
+umask 077
+mkdir -p "$KEYDIR"
+
+read -r -p "Comment/label for this key (e.g. you@browser): " COMMENT
+COMMENT="${COMMENT:-webtui@browser}"
+
+echo "==> generating ed25519 keypair (no per-key passphrase; the age vault is the secret)"
+ssh-keygen -t ed25519 -N "" -C "$COMMENT" -f "$KEYDIR/id_ed25519"
+
+# Point ~/.ssh at the RAM keydir so ssh/git find keys when unlocked, nothing when locked.
+rm -rf "$LINK"
+ln -s "$KEYDIR" "$LINK"
+
+echo "==> sealing the keys into $VAULT (age passphrase encryption)"
+echo "    Choose a STRONG passphrase — it is the only thing protecting your keys at rest."
+tar -C /run/keys -cf - .ssh | age -p -o "$VAULT"
+chmod 600 "$VAULT"
+
+echo
+echo "==> done. Your PUBLIC key (add this to GitHub -> Settings -> SSH keys):"
+echo "------------------------------------------------------------------------"
+cat "$KEYDIR/id_ed25519.pub"
+echo "------------------------------------------------------------------------"
+echo "Run 'vault-lock' to wipe the plaintext from RAM, 'vault-unlock' to restore it."

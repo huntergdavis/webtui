@@ -39,7 +39,9 @@ export function initTerminal(el) {
  * @param {object} cx
  * @param {import("@xterm/xterm").Terminal} term
  * @param {{onFirstOutput?: () => void}} [hooks]
- * @returns {() => void} a teardown function (best-effort)
+ * @returns {{dispose: () => void, type: (s: string) => void}} teardown + a programmatic
+ *   stdin injector (used by the vault buttons to run guest commands). `type` feeds bytes
+ *   exactly as if the user typed them — it does not bypass the shell.
  */
 export function wireTerminalToVM(cx, term, hooks = {}) {
   let firstSeen = false;
@@ -53,10 +55,11 @@ export function wireTerminalToVM(cx, term, hooks = {}) {
   let send = cx.setCustomConsole(write, term.cols, term.rows);
 
   const enc = new TextEncoder();
-  const dataSub = term.onData((data) => {
-    const bytes = enc.encode(data); // handle UTF-8 input, not just ASCII
+  const feed = (str) => {
+    const bytes = enc.encode(str); // handle UTF-8 input, not just ASCII
     for (let i = 0; i < bytes.length; i++) send(bytes[i]);
-  });
+  };
+  const dataSub = term.onData(feed);
 
   // No setConsoleSize in 1.2.8 — re-register the console at the new geometry on resize so
   // the guest sees the right cols/rows. Swap the live `send`.
@@ -64,5 +67,8 @@ export function wireTerminalToVM(cx, term, hooks = {}) {
     send = cx.setCustomConsole(write, cols, rows);
   });
 
-  return () => { dataSub.dispose(); resizeSub.dispose(); };
+  return {
+    dispose: () => { dataSub.dispose(); resizeSub.dispose(); },
+    type: feed,
+  };
 }

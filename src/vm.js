@@ -32,10 +32,16 @@ export async function initVM(storage, opts = {}) {
   const block = await CheerpX.HttpBytesDevice.create(diskUrl);
   const overlay = await CheerpX.OverlayDevice.create(block, storage.idb);
 
+  // In-memory device for the secret vault's plaintext keys (PLAN §8.1). DataDevice is
+  // session-only RAM, NOT backed by IndexedDB, so decrypted keys mounted at /run/keys
+  // never persist to the overlay — the core R1 fix. Mounted as a "dir" device.
+  const keysDev = await CheerpX.DataDevice.create();
+
   const config = {
     mounts: [
       { type: "ext2", path: "/", dev: overlay },
       { type: "devs", path: "/dev" },
+      { type: "dir", path: "/run/keys", dev: keysDev },
       // /proc and /sys are provided internally by CheerpX.
     ],
   };

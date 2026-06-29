@@ -34,3 +34,12 @@ RUN apt-get update \
 # Predictable root home.
 RUN mkdir -p /root && chmod 700 /root
 WORKDIR /root
+
+# Encrypted-vault helpers (PLAN §8.1, the R1 fix). Plaintext keys live only in the RAM
+# mount /run/keys (a host-side DataDevice, never persisted); ~/.ssh.age is the at-rest
+# ciphertext. The profile snippet wires SSH_AUTH_SOCK + prints vault status at login.
+COPY disk-src/vault-init disk-src/vault-unlock disk-src/vault-lock /usr/local/bin/
+COPY disk-src/profile-vault.sh /etc/profile.d/vault.sh
+RUN chmod 0755 /usr/local/bin/vault-init /usr/local/bin/vault-unlock /usr/local/bin/vault-lock \
+ && chmod 0644 /etc/profile.d/vault.sh \
+ && mkdir -p /run/keys && chmod 700 /run/keys

@@ -15,6 +15,7 @@ import {
   preferredExitNode,
   setPreferredExitNode,
 } from "./net.js";
+import { wireVault } from "./vault.js";
 import { ENGINE_VERSION } from "./cheerpx.js";
 import { startBootProgress, setBootTitle, stopBootProgress } from "./progress.js";
 
@@ -212,8 +213,9 @@ async function main() {
     setBootTitle("Booting Debian — streaming disk…");
     const cx = await initVM(storage, { image: budget.image });
     // Tear the overlay down the moment the VM produces its first byte of output.
-    wireTerminalToVM(cx, term, { onFirstOutput: stopBootProgress });
+    const termIO = wireTerminalToVM(cx, term, { onFirstOutput: stopBootProgress });
     wireNetworking(cx);
+    wireVault(termIO.type);
     term.focus();
     // Resolves only when the shell exits; if it does, tell the user rather than hang.
     const { status } = await startShell(cx);

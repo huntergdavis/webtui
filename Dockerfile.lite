@@ -21,3 +21,11 @@ RUN apt-get update \
 
 RUN mkdir -p /root && chmod 700 /root
 WORKDIR /root
+
+# Encrypted-vault helpers (PLAN §8.1). Same scripts as the full image; busybox supplies
+# tar and openssh-client supplies ssh-agent/ssh-add/ssh-keygen, age is installed above.
+COPY disk-src/vault-init disk-src/vault-unlock disk-src/vault-lock /usr/local/bin/
+COPY disk-src/profile-vault.sh /etc/profile.d/vault.sh
+RUN chmod 0755 /usr/local/bin/vault-init /usr/local/bin/vault-unlock /usr/local/bin/vault-lock \
+ && chmod 0644 /etc/profile.d/vault.sh \
+ && mkdir -p /run/keys && chmod 700 /run/keys
