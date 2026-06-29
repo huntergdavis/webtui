@@ -50,8 +50,22 @@ The host serving `debian.ext2` must support **HTTP range** and send **`Last-Modi
 `ETag`** — `HttpBytesDevice` refuses to start otherwise. Vite dev and Cloudflare Pages both do.
 
 ## Status
-Phases 1–3 done: cross-origin isolation, disk image pipeline, and VM boot to a Debian
-`bash` prompt. See [IMPLEMENTATION.md](IMPLEMENTATION.md) for the build order.
+Phases 1–7 implemented: cross-origin isolation, disk image pipeline, VM boot to a Debian
+`bash` prompt, persistence (`persist()` + quota + factory reset), Tailscale networking +
+auth (lazy `networkLogin` on Connect), the encrypted vault (age + ssh-agent on a RAM-only
+`/run/keys` DataDevice, with Lock/auto-lock), and accessibility/UX (font/size/line-height/
+high-contrast settings + a touch soft-key bar). See [IMPLEMENTATION.md](IMPLEMENTATION.md).
+
+Phases 5–6 carry live gates that need your accounts (a tailnet + exit node; GitHub) and an
+image rebuild; the code is in place but those end-to-end runs are unverified here.
+
+**Phase 8 (deploy) caveat:** Cloudflare Pages caps assets at **25 MiB/file**, so the
+~300–360 MB disk images **cannot** be served from Pages. Host the `.ext2` on object
+storage (e.g. **Cloudflare R2**) with HTTP range + `Last-Modified`/`ETag`, and — because
+the page is COEP `require-corp` — send `Cross-Origin-Resource-Policy: cross-origin` (or
+CORS with `Access-Control-Expose-Headers: Content-Range, Last-Modified, ETag`). If the
+disk lives on a different origin than the app, add that origin to CSP `connect-src`.
+Same-origin (one host serving both app + disk with range) avoids all of this.
 
 ## Key constraints
 - Client-side only · runs in **Firefox** (primary) and Chrome/Chromebook · works on M1 and ARM ·
