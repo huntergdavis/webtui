@@ -170,7 +170,13 @@ async function buildOfflinePlan(app, params, m) {
   const gh = parseGitHub(m.repo || app);
   const ref = params.get("ref") || m.ref || "HEAD";
   const base = gh ? `${RAW}/${gh.owner}/${gh.repo}/${ref}/` : null;
-  const files = toArray(m.files).length
+  // Two ways to get the app's files offline:
+  //  - "bundle": one prebuilt tar/tar.gz committed to the repo (best for vendored deps).
+  //  - "files" (explicit) or auto-discovery via the GitHub trees API (stdlib apps).
+  const bundle = m.bundle && base ? base + String(m.bundle).replace(/^\/+/, "") : null;
+  const files = bundle
+    ? []
+    : toArray(m.files).length
     ? toArray(m.files)
     : gh
     ? await discoverFiles(gh, ref, m)
@@ -191,6 +197,7 @@ async function buildOfflinePlan(app, params, m) {
     description: m.description || "",
     base,
     files,
+    bundle,
     extractDir,
     runLine,
   };
@@ -282,12 +289,17 @@ function renderOfflinePanel(plan, io) {
 
   const label = document.createElement("p");
   label.className = "launcher-label";
-  label.textContent = `Fetches ${plan.files.length} file(s) into ${plan.extractDir}, then runs:`;
+  label.textContent = plan.bundle
+    ? `Fetches a prebuilt bundle into ${plan.extractDir}, then runs:`
+    : `Fetches ${plan.files.length} file(s) into ${plan.extractDir}, then runs:`;
   body.appendChild(label);
 
   const pre = document.createElement("pre");
   pre.className = "launcher-cmds";
-  pre.textContent = plan.files.map((f) => `# ${f}`).join("\n") + "\n" + plan.runLine;
+  const listing = plan.bundle
+    ? `# ${plan.bundle.split("/").pop()}`
+    : plan.files.map((f) => `# ${f}`).join("\n");
+  pre.textContent = listing + "\n" + plan.runLine;
   body.appendChild(pre);
 
   const runBtn = el("launcher-run");
@@ -305,30 +317,42 @@ async function launchOffline(plan, io, runBtn) {
     showBanner("Offline launch unavailable (no app device mounted).", "error");
     return;
   }
-  if (!plan.base || !plan.files.length) {
-    showBanner("This offline manifest lists no files to fetch.", "error");
+  if (!plan.base || (!plan.bundle && !plan.files.length)) {
+    showBanner("This offline manifest has nothing to fetch (no bundle or files).", "error");
     return;
   }
   try {
     runBtn.textContent = "Fetching…";
-    // Fetch every file over CORS (page-side; the VM has no network), then pack them into a
-    // single tar so one writeFile reproduces the whole directory tree in the guest —
-    // DataDevice.writeFile can't create parent dirs, but `tar xf` can.
-    const entries = [];
-    for (const f of plan.files) {
-      const rel = f.replace(/^\/+/, "");
-      const res = await fetch(plan.base + rel, { mode: "cors" });
-      if (!res.ok) throw new Error(`${f}: HTTP ${res.status}`);
-      entries.push({ name: rel, bytes: new Uint8Array(await res.arrayBuffer()) });
+    // The page (which has network even when the VM doesn't) fetches the app bytes over
+    // CORS, then writes ONE tar into the in-memory device; the guest extracts it. Either a
+    // prebuilt bundle tar(.gz) committed to the repo, or files packed into a tar here.
+    let tarBytes;
+    if (plan.bundle) {
+      const res = await fetch(plan.bundle, { mode: "cors" });
+      if (!res.ok) throw new Error(`bundle: HTTP ${res.status}`);
+      tarBytes = new Uint8Array(await res.arrayBuffer());
+    } else {
+      const entries = [];
+      for (const f of plan.files) {
+        const rel = f.replace(/^\/+/, "");
+        const res = await fetch(plan.base + rel, { mode: "cors" });
+        if (!res.ok) throw new Error(`${f}: HTTP ${res.status}`);
+        entries.push({ name: rel, bytes: new Uint8Array(await res.arrayBuffer()) });
+      }
+      tarBytes = buildTar(entries); // DataDevice.writeFile can't mkdir; tar xf can.
     }
     runBtn.textContent = "Unpacking…";
-    await io.appDev.writeFile("/_webtui_bundle.tar", buildTar(entries));
+    await io.appDev.writeFile("/_webtui_bundle.tar", tarBytes);
 
     el("launcher").setAttribute("hidden", "");
     document.getElementById("screen")?.querySelector(".xterm-helper-textarea")?.focus();
     io.type("\x15");
     io.type(plan.runLine + "\n");
-    showBanner(`Launching ${plan.name} (offline) — watch the terminal.`, "ok");
+    showBanner(
+      `Launching ${plan.name} (offline) — watch the terminal. A big app may take ` +
+        `30–60s to unpack and import the first time; it gets faster after.`,
+      "ok"
+    );
   } catch (err) {
     runBtn.disabled = false;
     runBtn.textContent = "Run";
