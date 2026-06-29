@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>webtui — browser Linux terminal</title>
+    <meta
+      name="description"
+      content="Client-side-only Linux terminal in the browser (CheerpX + Tailscale)."
+    />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <!-- Boot/error banner: where ensureCrossOriginIsolated() and boot failures speak up.
+         Labels, not glyphs (R-A5). -->
+    <div id="banner" class="banner" role="status" aria-live="polite" hidden></div>
+
+    <header class="topbar">
+      <h1 class="brand">webtui</h1>
+      <div class="controls">
+        <button id="btn-connect" type="button" disabled>Connect (Tailscale)</button>
+        <button id="btn-unlock" type="button" disabled>Unlock vault</button>
+      </div>
+    </header>
+
+    <!-- The terminal mounts here in Phase 3. -->
+    <main id="screen" class="screen" aria-label="Terminal"></main>
+
+    <!-- Status bar: every item is text-labeled, never glyph-only (R-A5, R-A4). -->
+    <footer class="statusbar" aria-label="Status">
+      <span class="status-item">
+        <span class="status-label">Isolation:</span>
+        <span id="status-isolation" class="status-value">checking…</span>
+      </span>
+      <span class="status-item">
+        <span class="status-label">Storage:</span>
+        <span id="status-storage" class="status-value">—</span>
+      </span>
+      <span class="status-item">
+        <span class="status-label">Tailscale:</span>
+        <span id="status-tailscale" class="status-value">offline</span>
+      </span>
+      <span class="status-item">
+        <span class="status-label">Exit node:</span>
+        <span id="status-exitnode" class="status-value">none</span>
+      </span>
+    </footer>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

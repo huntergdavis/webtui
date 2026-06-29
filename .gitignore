@@ -4,9 +4,13 @@ dist/
 *.log
 .env
 .env.*
-disk/blocks/
+
+# Self-hosted engine + disk image live under public/ (Vite static dir) and are large /
+# generated build artifacts, not source. Build them with scripts/build-disk.sh (Phase 2)
+# and the vendor fetch step (Phase 3).
 *.ext2
-vendor/cx*.wasm
-vendor/cx.esm.js
-vendor/tsconnect.wasm
+public/disk/blocks/
+public/vendor/cx*.wasm
+public/vendor/cx.esm.js
+public/vendor/tsconnect.wasm
 .vite/

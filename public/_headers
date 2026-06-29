@@ -1,0 +1,16 @@
+# Cloudflare Pages / Netlify response headers.
+# This file is the deploy-time source of truth for cross-origin isolation (PLAN §1)
+# and the security headers (PLAN §11, R-A3, R-S3). The Vite dev/preview server sets
+# the same COOP/COEP via vite.config.js so `crossOriginIsolated` is true locally too.
+#
+# CSP note (⚠VERIFY in Phase 3): 'wasm-unsafe-eval' lets CheerpX compile WASM without
+# allowing JS eval. connect-src is pinned to the Tailscale control/DERP origins only;
+# tunnelled VM traffic does NOT go through fetch so CSP can't see it (documented R2).
+/*
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: require-corp
+  Cross-Origin-Resource-Policy: same-origin
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://*.tailscale.com wss://*.tailscale.com https://login.tailscale.com; worker-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'

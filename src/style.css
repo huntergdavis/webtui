@@ -1,0 +1,142 @@
+/* webtui base styles.
+   Accessibility (R-A5) is a v1 requirement, not a later polish: readable defaults,
+   generous spacing, text labels beside every status value. The font picker,
+   high-contrast theme, and size/line-height controls land in Phase 7 and build on
+   the CSS custom properties declared here. */
+
+:root {
+  --bg: #0b0e14;
+  --bg-elev: #11151f;
+  --fg: #d6deeb;
+  --fg-dim: #8aa0c0;
+  --accent: #7aa2f7;
+  --ok: #9ece6a;
+  --warn: #e0af68;
+  --err: #f7768e;
+  --border: #1f2430;
+
+  /* Tunable in Phase 7 (size / line-height / dyslexia-friendly font). */
+  --ui-font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --term-font: ui-monospace, "Cascadia Code", "Fira Code", Menlo, Consolas, monospace;
+  --ui-font-size: 15px;
+  --line-height: 1.5;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--ui-font);
+  font-size: var(--ui-font-size);
+  line-height: var(--line-height);
+}
+
+.banner {
+  padding: 0.75rem 1rem;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);
+}
+.banner[data-level="error"] {
+  background: #2a0e14;
+  color: var(--err);
+}
+.banner[data-level="warn"] {
+  background: #2a230e;
+  color: var(--warn);
+}
+.banner[data-level="ok"] {
+  background: #0e2a14;
+  color: var(--ok);
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 1rem;
+  background: var(--bg-elev);
+  border-bottom: 1px solid var(--border);
+}
+
+.brand {
+  margin: 0;
+  font-size: 1.1rem;
+  letter-spacing: 0.02em;
+}
+
+.controls {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+button {
+  font-family: inherit;
+  font-size: 0.95rem;
+  padding: 0.45rem 0.85rem;
+  background: var(--bg);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+}
+button:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.screen {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  background: #000;
+  font-family: var(--term-font);
+}
+
+.statusbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  padding: 0.4rem 1rem;
+  background: var(--bg-elev);
+  border-top: 1px solid var(--border);
+  font-size: 0.85rem;
+  color: var(--fg-dim);
+}
+
+.status-label {
+  color: var(--fg-dim);
+}
+.status-value {
+  color: var(--fg);
+  font-weight: 600;
+}
+.status-value[data-level="ok"] {
+  color: var(--ok);
+}
+.status-value[data-level="warn"] {
+  color: var(--warn);
+}
+.status-value[data-level="error"] {
+  color: var(--err);
+}
