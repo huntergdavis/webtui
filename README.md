@@ -22,8 +22,29 @@ networking through a **Tailscale** tailnet and your existing exit node.
 - **[TEST_PLAN.md](TEST_PLAN.md)** — test matrix and pass criteria (Firefox-first).
 - **[prompt.md](prompt.md)** — the original research prompt.
 
+## Building the disk image
+The Debian rootfs is built locally and is **not** committed (it's large and generated).
+Requires Docker, `e2fsprogs` (`mkfs.ext2`), and `fakeroot`:
+
+```sh
+scripts/build-disk.sh full   # -> public/disk/debian.ext2       (~359 MB)
+scripts/build-disk.sh lite   # -> public/disk/debian-lite.ext2  (~304 MB, busybox-class)
+```
+
+It builds an **i386** image (CheerpX runs a 32-bit x86 guest), exports the rootfs, and
+`mkfs.ext2`'s a single read-only image under `fakeroot`. CheerpX streams blocks on demand
+via `HttpBytesDevice` (HTTP range), so first boot only downloads the blocks it touches.
+
+## Dev
+```sh
+npm ci        # install pinned deps (lockfile committed)
+npm run dev    # Vite dev server with COOP/COEP -> crossOriginIsolated === true
+npm run build  # -> dist/ (Cloudflare Pages / Netlify ready, _headers included)
+```
+
 ## Status
-Design + research complete. Implementation not yet started.
+Phase 1 (skeleton + cross-origin isolation) and Phase 2 (disk image pipeline) done.
+See [IMPLEMENTATION.md](IMPLEMENTATION.md) for the build order.
 
 ## Key constraints
 - Client-side only · runs in **Firefox** (primary) and Chrome/Chromebook · works on M1 and ARM ·

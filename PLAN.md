@@ -11,8 +11,10 @@ Building this on raw **v86** would require hand-writing an L2-ethernet→L3-IP b
 your own relay — weeks of work for a worse result. v86 is the fallback only if "zero proprietary
 engine" is a hard line (see §13).
 
-> **API note:** CheerpX symbols below are verbatim from the 1.2.x docs
-> (`CheerpX.Linux.create`, `CheerpX.CloudDevice/IDBDevice/OverlayDevice`, the `networkInterface`
+> **API note (✅ VERIFIED 2026-06):** `CloudDevice` has been **removed**; a remote ext2 is now
+> loaded with **`CheerpX.HttpBytesDevice.create(url)`** (single file + HTTP range requests, no
+> chunking) layered under `OverlayDevice`/`IDBDevice`. Other symbols below are from the 1.2.x docs
+> (`CheerpX.Linux.create`, `CheerpX.IDBDevice/OverlayDevice/DataDevice/WebDevice`, the `networkInterface`
 > object with `authKey`/`loginUrlCb`/`controlUrl`/`stateUpdateCb`/`netmapUpdateCb`). Exit-node
 > *selection* field names should be confirmed against the WebVM source at build time — flagged
 > inline as ⚠VERIFY.
@@ -25,7 +27,7 @@ engine" is a hard line (see §13).
 Browser tab (static assets only)
 ├─ xterm.js                      ← terminal UI
 ├─ CheerpX (cx.esm.js + wasm)    ← x86→WASM JIT, Linux syscalls
-│   ├─ mounts: OverlayDevice(CloudDevice rootfs, IDBDevice overlay)
+│   ├─ mounts: OverlayDevice(HttpBytesDevice rootfs, IDBDevice overlay)
 │   └─ networkInterface ──┐
 ├─ tsconnect (Go→WASM)  ←─┘ lwIP TCP/IP (C→WASM), custom TUN
 │   └─ WireGuard over DERP (HTTPS/WebSocket)
@@ -104,18 +106,19 @@ writes in IndexedDB. Build it with a Dockerfile (Mini.WebVM approach) so package
 reproducible.
 
 ```
-Dockerfile  →  export rootfs  →  mkfs.ext2 image  →  split/index for CloudDevice
+Dockerfile (i386)  →  docker export rootfs  →  mkfs.ext2 -d  →  single debian.ext2
 ```
 
-`scripts/build-disk.sh` (function-level):
-- `build_rootfs()` — `docker build` an image with: `bash coreutils git openssh-client vim
-  ca-certificates curl less` + whatever ("fresh-editor", python, etc.). Keep it lean — every MB
-  is first-load download.
-- `export_to_ext2()` — `docker export` → populate a sized `ext2` image (`mkfs.ext2 -d rootdir`).
-- `chunk_and_index()` — produce the block layout CheerpX's `CloudDevice` expects (⚠VERIFY exact
-  format/tooling against current CheerpX docs; older WebVM used a custom `.ext2` + range
-  requests; newer may accept a plain image over HTTP range).
-- Pre-seed `/etc/resolv.conf` with `100.100.100.100` (MagicDNS) and a public fallback.
+`scripts/build-disk.sh` (✅ VERIFIED 2026-06 — implemented):
+- `docker build --platform linux/386` an i386 image with: `bash coreutils git openssh-client
+  vim-tiny ca-certificates curl less age python3`. Keep it lean — every MB is first-load download.
+- `docker export` the container → extract + `mkfs.ext2 -b 4096 -d <rootfs> debian.ext2 <size>`,
+  **under `fakeroot`** so files are baked `root:root`. Output is **one `.ext2` file** — there is
+  **no chunk/index step** (CheerpX's `HttpBytesDevice` streams blocks via HTTP range from the
+  single file; `CloudDevice` was removed).
+- Seed `/etc/resolv.conf` (`100.100.100.100` + public fallback) **post-export** in the script —
+  Docker masks `/etc/resolv.conf` on export, so a Dockerfile `COPY` would emit a 0-byte file.
+- Built sizes: full `debian.ext2` 359 MB, `debian-lite.ext2` 304 MB (both fsck-clean).
 
 **Goal: keep the base image ≤ ~200–400 MB compressed-on-the-wire.** "No installs" is true, but
 *first boot is a real download* (red-team §R9).
@@ -149,7 +152,10 @@ function ensureCrossOriginIsolated() {
 import * as CheerpX from "/vendor/cx.esm.js";
 
 async function initVM(storage, term) {
-  const rootfs  = await CheerpX.CloudDevice.create("/disk/debian.ext2"); // read-only base
+  // ✅ VERIFIED 2026-06: CloudDevice was removed. A remote ext2 is loaded by
+  // HttpBytesDevice (single file, HTTP range requests), then made writable with an
+  // OverlayDevice over the IDBDevice. Self-host the .ext2 same-origin (COEP/R-F1).
+  const rootfs  = await CheerpX.HttpBytesDevice.create("/disk/debian.ext2"); // read-only base
   const overlay = await CheerpX.OverlayDevice.create(rootfs, storage.idb); // §5
   const cx = await CheerpX.Linux.create({
     mounts: [

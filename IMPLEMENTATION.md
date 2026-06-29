@@ -44,14 +44,20 @@ If false, fix headers before doing anything else.
 
 ## Phase 2 — Disk image build pipeline (offline, one-time per image)
 
-1. 🧩 `Dockerfile` — minimal Debian + `bash coreutils git openssh-client ca-certificates curl
-   less vim age python3` + your tools (e.g. textual for `media_tui`). Keep it lean.
-2. 🧩 `scripts/build-disk.sh` (PLAN §3): `build_rootfs` → `export_to_ext2` → `chunk_and_index`.
-   - ⚠ Confirm the exact block format CheerpX `CloudDevice` expects for the current version.
-3. Pre-seed `/etc/resolv.conf` (MagicDNS `100.100.100.100` + public fallback).
+1. 🧩 `Dockerfile` — minimal Debian **i386** + `bash coreutils git openssh-client
+   ca-certificates curl less vim-tiny age python3`. Keep it lean (textual/full vim install
+   at runtime). ✅ VERIFIED 2026-06: guest is 32-bit x86 → base must be `--platform=linux/386`.
+2. 🧩 `scripts/build-disk.sh`: `docker build` → `docker export` rootfs → `mkfs.ext2 -b 4096 -d`.
+   - ✅ VERIFIED 2026-06 (cheerpx.io/docs/guides/custom-images): output is a **single `.ext2`
+     file** loaded by **`HttpBytesDevice.create(url)`** (range requests). The old
+     `CloudDevice` + `chunk_and_index()` design is gone — **no chunking step**.
+   - Build the rootfs+fs under `fakeroot` so files are baked `root:root` (guest runs uid 0).
+3. Pre-seed `/etc/resolv.conf` (MagicDNS `100.100.100.100` + public fallback) — **post-export**
+   in the script, not via Dockerfile `COPY` (Docker masks `/etc/resolv.conf` on export).
 4. Build a **second, trimmed image** (busybox-class) for low-memory devices (PLAN §14.3).
 
-🧪 **Done when:** `debian.ext2` exists, is chunked, and is < ~400 MB on the wire; lite image exists.
+🧪 **Done when:** `public/disk/debian.ext2` exists, is < ~400 MB on the wire (blocks lazy-load),
+and the lite image exists. ✅ (full 359 MB, lite 304 MB; both fsck-clean, root-owned.)
 
 ---
 
@@ -59,8 +65,10 @@ If false, fix headers before doing anything else.
 
 1. 🧩 `terminal.js`: `initTerminal(el)`, `wireTerminalToVM(cx, term)` (PLAN §7.1).
    - ⚠ Confirm the CheerpX console hook (`setCustomConsole`/equivalent) name.
-2. 🧩 `vm.js`: `initVM(storage, term)` — `CloudDevice` → `OverlayDevice` → `CheerpX.Linux.create`
-   (PLAN §4.2). Self-host `cx.esm.js` + wasm in `vendor/`, pin the version, add **SRI**.
+2. 🧩 `vm.js`: `initVM(storage, term)` — **`HttpBytesDevice`** → `OverlayDevice` →
+   `CheerpX.Linux.create` (PLAN §4.2; ✅ VERIFIED 2026-06 — `CloudDevice` removed, use
+   `HttpBytesDevice.create("/disk/debian.ext2")`). Self-host `cx.esm.js` + wasm in
+   `public/vendor/`, pin the version, add **SRI**.
 3. 🧩 `main.js`: `main()` orchestrator (PLAN §4) → `startShell()` runs `/bin/bash --login`.
 4. 🧩 `detectPlatformBudget()` + `probeWasmMemoryCeiling()` (PLAN §14.1–14.3); pick image +
    `maxMemoryMB`.

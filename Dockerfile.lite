@@ -1,0 +1,23 @@
+# check=skip=FromPlatformFlagConstDisallowed
+# Lite webtui rootfs — busybox-class Debian i386 for memory-capped devices (PLAN §14.3).
+#
+# The §14.1 platform probe boots this trimmed image when the per-tab WASM ceiling is low
+# (e.g. Firefox Android / budget tablets). Same i386 base as the full image; busybox
+# supplies vi/less/top/etc. instead of separate packages. No python by default.
+FROM --platform=linux/386 i386/debian:bookworm-slim
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update \
+ && apt-get -y --no-install-recommends install \
+      bash busybox \
+      git openssh-client ca-certificates curl \
+      age \
+ && busybox --install -s \
+ && rm -rf /var/lib/apt/lists/* /usr/share/doc/* /usr/share/man/* /usr/share/locale/* \
+           /var/cache/apt/* /var/cache/debconf/*
+
+# /etc/resolv.conf is seeded post-export by scripts/build-disk.sh (see Dockerfile note).
+
+RUN mkdir -p /root && chmod 700 /root
+WORKDIR /root
