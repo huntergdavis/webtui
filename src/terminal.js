@@ -12,7 +12,12 @@ const TERM_FONT =
 /** Create the terminal, mount it in `el`, and keep it fitted to the container. */
 export function initTerminal(el) {
   const term = new Terminal({
-    convertEol: false, // the guest pty already emits CRLF
+    // CheerpX's setCustomConsole delivers raw tty output WITHOUT the kernel's ONLCR
+    // post-processing, so the guest emits bare "\n" (no "\r"). Without this, every newline
+    // moves down but not to column 0 — output staircases and the prompt drifts right.
+    // convertEol makes xterm map "\n" -> "\r\n" (an extra "\r" on already-CRLF output is a
+    // harmless no-op). VERIFIED 2026-06 via a headless boot (ls staircased; this fixes it).
+    convertEol: true,
     cursorBlink: true,
     fontFamily: TERM_FONT,
     fontSize: 14,

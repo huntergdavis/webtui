@@ -26,6 +26,13 @@
   box-sizing: border-box;
 }
 
+/* The `hidden` attribute must win over our component `display` rules (.settings-panel and
+   .softkeys set display:flex, which would otherwise override the UA [hidden]{display:none}
+   at equal specificity and leave them permanently visible). */
+[hidden] {
+  display: none !important;
+}
+
 html,
 body {
   margin: 0;
@@ -259,11 +266,38 @@ body.hc {
 .settings-panel {
   display: flex;
   flex-wrap: wrap;
-  gap: 1rem 1.5rem;
-  align-items: center;
-  padding: 0.75rem 1rem;
+  gap: 1.25rem 2rem;
+  align-items: flex-start;
+  padding: 1rem;
   background: var(--bg-elev);
   border-bottom: 1px solid var(--border);
+}
+.set-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  min-width: 14rem;
+}
+.set-h {
+  margin: 0;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--fg-dim);
+}
+.set-note {
+  margin: 0;
+  max-width: 22rem;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--fg-dim);
+}
+.set-note code {
+  font-family: var(--term-font);
+  font-size: 0.78rem;
+  background: var(--bg);
+  padding: 0 0.25rem;
+  border-radius: 3px;
 }
 .set-row {
   display: flex;

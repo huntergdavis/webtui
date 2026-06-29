@@ -36,39 +36,60 @@
         <select id="exitnode-picker" aria-label="Exit node" disabled>
           <option value="">connect first…</option>
         </select>
-        <button id="btn-unlock" type="button" disabled>Unlock vault</button>
-        <button id="btn-lock" type="button" disabled>Lock vault</button>
-        <button id="btn-reset" type="button" class="danger" disabled
-          title="Delete the writable overlay and reboot from a pristine disk">
-          Factory reset
-        </button>
         <button id="btn-settings" type="button" aria-expanded="false"
-          aria-controls="settings-panel" title="Display &amp; accessibility settings">
+          aria-controls="settings-panel" title="Settings, vault &amp; reset">
           Settings
         </button>
       </div>
     </header>
 
-    <!-- Display + accessibility settings (R-A5). Toggled by the Settings button. -->
+    <!-- Settings: display/accessibility (R-A5), the vault controls, and the reset.
+         Toggled by the Settings button; kept out of the top bar to reduce clutter. -->
     <section id="settings-panel" class="settings-panel" aria-label="Settings" hidden>
-      <label class="set-row">
-        <span>Font</span>
-        <select id="set-font"></select>
-      </label>
-      <label class="set-row">
-        <span>Size</span>
-        <input id="set-size" type="range" min="9" max="28" step="1" />
-        <output id="set-size-val" class="set-val">—</output>
-      </label>
-      <label class="set-row">
-        <span>Line height</span>
-        <input id="set-lh" type="range" min="1" max="2" step="0.1" />
-        <output id="set-lh-val" class="set-val">—</output>
-      </label>
-      <label class="set-row set-row-check">
-        <input id="set-contrast" type="checkbox" />
-        <span>High contrast</span>
-      </label>
+      <div class="set-group">
+        <h2 class="set-h">Display</h2>
+        <label class="set-row">
+          <span>Font</span>
+          <select id="set-font"></select>
+        </label>
+        <label class="set-row">
+          <span>Size</span>
+          <input id="set-size" type="range" min="9" max="28" step="1" />
+          <output id="set-size-val" class="set-val">—</output>
+        </label>
+        <label class="set-row">
+          <span>Line height</span>
+          <input id="set-lh" type="range" min="1" max="2" step="0.1" />
+          <output id="set-lh-val" class="set-val">—</output>
+        </label>
+        <label class="set-row set-row-check">
+          <input id="set-contrast" type="checkbox" />
+          <span>High contrast</span>
+        </label>
+      </div>
+
+      <div class="set-group">
+        <h2 class="set-h">SSH key vault</h2>
+        <p class="set-note">
+          Your SSH key is encrypted at rest and only decrypted into RAM. <b>Unlock</b> runs
+          <code>vault-unlock</code> in the terminal — type your passphrase there. It
+          auto-locks when the tab is idle or loses focus; <b>Lock now</b> clears it
+          immediately. First time? Run <code>vault-init</code> in the terminal.
+        </p>
+        <div class="set-row">
+          <button id="btn-unlock" type="button" disabled>Unlock</button>
+          <button id="btn-lock" type="button" disabled>Lock now</button>
+        </div>
+      </div>
+
+      <div class="set-group">
+        <h2 class="set-h">Danger zone</h2>
+        <p class="set-note">
+          Factory reset permanently deletes everything written to the disk (packages,
+          files, shell history, keys) and reboots from a pristine image.
+        </p>
+        <button id="btn-reset" type="button" class="danger" disabled>Factory reset</button>
+      </div>
     </section>
 
     <!-- The terminal mounts here. The boot overlay sits on top until first VM output. -->
