@@ -37,14 +37,21 @@ via `HttpBytesDevice` (HTTP range), so first boot only downloads the blocks it t
 
 ## Dev
 ```sh
-npm ci        # install pinned deps (lockfile committed)
-npm run dev    # Vite dev server with COOP/COEP -> crossOriginIsolated === true
-npm run build  # -> dist/ (Cloudflare Pages / Netlify ready, _headers included)
+npm ci                      # install pinned deps (lockfile committed)
+scripts/build-disk.sh full  # -> public/disk/debian.ext2 (needs Docker; see above)
+scripts/fetch-engine.sh     # self-host pinned CheerpX 1.2.8 -> public/vendor/ (+ SRI manifest)
+npm run dev                  # Vite dev server (COOP/COEP) -> boots the VM in the browser
+npm run build                # -> dist/ (Cloudflare Pages / Netlify ready, _headers included)
 ```
+`scripts/fetch-engine.sh verify` checks the vendored engine against the committed
+`public/vendor/engine.manifest.json` hashes (run on every version bump).
+
+The host serving `debian.ext2` must support **HTTP range** and send **`Last-Modified` or
+`ETag`** — `HttpBytesDevice` refuses to start otherwise. Vite dev and Cloudflare Pages both do.
 
 ## Status
-Phase 1 (skeleton + cross-origin isolation) and Phase 2 (disk image pipeline) done.
-See [IMPLEMENTATION.md](IMPLEMENTATION.md) for the build order.
+Phases 1–3 done: cross-origin isolation, disk image pipeline, and VM boot to a Debian
+`bash` prompt. See [IMPLEMENTATION.md](IMPLEMENTATION.md) for the build order.
 
 ## Key constraints
 - Client-side only · runs in **Firefox** (primary) and Chrome/Chromebook · works on M1 and ARM ·

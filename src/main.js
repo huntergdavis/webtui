@@ -1,11 +1,15 @@
-// src/main.js — boot orchestrator.
+// src/main.js — boot orchestrator (PLAN §4).
 //
-// Build status: Phase 1. The full orchestration (terminal → storage → VM → shell →
-// networking → vault) is filled in across PLAN.md §4 in later phases. For now main()
-// proves the single thing that gates everything else: the page is cross-origin isolated,
-// so SharedArrayBuffer (and therefore CheerpX) will be available (PLAN §1, §4.1).
+// Phase 3: isolation gate -> platform probe -> terminal -> overlay storage -> VM -> wire
+// I/O -> login shell. Networking (Connect) and the vault (Unlock) arrive in Phases 5/6;
+// their buttons stay disabled for now.
 
 import { showBanner, setStatus } from "./ui.js";
+import { detectPlatformBudget } from "./platform.js";
+import { initTerminal, wireTerminalToVM } from "./terminal.js";
+import { initStorage } from "./storage.js";
+import { initVM, startShell } from "./vm.js";
+import { ENGINE_VERSION } from "./cheerpx.js";
 
 /** Thrown when the page cannot host the VM (e.g. not cross-origin isolated). */
 export class BootError extends Error {
@@ -17,8 +21,8 @@ export class BootError extends Error {
 
 /**
  * Hard-fail (with a readable message) unless the page is cross-origin isolated.
- * CheerpX needs SharedArrayBuffer, which the browser only grants under
- * COOP: same-origin + COEP: require-corp on a secure (HTTPS) context. (PLAN §4.1)
+ * CheerpX needs SharedArrayBuffer, granted only under COOP: same-origin +
+ * COEP: require-corp on a secure (HTTPS) context. (PLAN §4.1)
  * @throws {BootError}
  */
 export function ensureCrossOriginIsolated() {
@@ -32,30 +36,54 @@ export function ensureCrossOriginIsolated() {
 }
 
 async function main() {
-  // The one gate that blocks the whole project. Report it loudly either way.
+  // 1. The gate that blocks everything else.
   try {
     ensureCrossOriginIsolated();
   } catch (err) {
     console.error(err);
     setStatus("status-isolation", "NOT isolated", "error");
     showBanner(err instanceof BootError ? err.message : String(err), "error");
-    return; // Nothing else can boot without this; stop here with a legible message.
+    return;
   }
-
   console.log("crossOriginIsolated ===", self.crossOriginIsolated);
   setStatus("status-isolation", "isolated", "ok");
 
-  // Phase 2+ wiring lands here:
-  //   const term = initTerminal(document.getElementById("screen"));   // §7.1
-  //   const storage = await initStorage();                            // §5
-  //   const cx = await initVM(storage, term);                         // §4.2
-  //   wireTerminalToVM(cx, term);                                     // §7.1
-  //   setupConnectButton(cx);                                         // §6/§7
-  //   await startShell(cx, term);                                     // §4.3
-  showBanner(
-    "Phase 1 OK: cross-origin isolated. Terminal + VM boot land in Phase 3.",
-    "ok"
+  // 2. Measure the per-tab WASM ceiling and choose an image (R-F2/R14).
+  const budget = detectPlatformBudget();
+  console.log("platform budget:", budget);
+  setStatus(
+    "status-storage", // reuse the storage slot to show the memory budget until Phase 4
+    `${budget.capMB} MB cap · ${budget.image} image`,
+    budget.lowMem ? "warn" : "ok"
   );
+
+  // 3. Terminal.
+  const { term } = initTerminal(document.getElementById("screen"));
+
+  // 4–7. Storage -> VM -> wire -> shell. First boot is a real download (R9), so narrate.
+  try {
+    showBanner(`Loading CheerpX ${ENGINE_VERSION} + Debian (first boot downloads blocks)…`, "ok");
+    const storage = await initStorage();
+    const cx = await initVM(storage, { image: budget.image });
+    wireTerminalToVM(cx, term);
+    showBanner(null);
+    term.focus();
+    // Resolves only when the shell exits; if it does, tell the user rather than hang.
+    const { status } = await startShell(cx);
+    showBanner(`Shell exited (status ${status}). Reload to start a new session.`, "warn");
+  } catch (err) {
+    console.error(err);
+    const msg = String(err && err.message || err);
+    if (/memory|RangeError|allocat/i.test(msg)) {
+      showBanner(
+        "This browser capped WASM memory for the tab. Try the lite image, close other " +
+          "tabs, or use a desktop browser / Chromebook. (" + msg + ")",
+        "error"
+      );
+    } else {
+      showBanner("Boot failed: " + msg, "error");
+    }
+  }
 }
 
 main();

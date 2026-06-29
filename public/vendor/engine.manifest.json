@@ -1,0 +1,20 @@
+{
+  "version": "1.2.8",
+  "source": "https://cxrtnc.leaningtech.com/1.2.8",
+  "files": {
+    "cx.esm.js": "sha384-dKvqHbgtN6XNaGhOT8P3axuXaMwwhtNWrBnl8qI2XpLaRTO/Iw95KuB1jte6sRb0",
+    "cx_esm.js": "sha384-KPyy570v7/MPRFDwPz4DDrOVdRlKXbR5JfiRVGVWms9Ekm5kBuzhIrF+9RjvLI5M",
+    "cheerpOS.js": "sha384-5wSCN4Ff3whVCGKSgJ1SSLHjG6FPGqGCm48p+BE93GO5oszHeIq/Rd6eDN357N5h",
+    "cxbridge.js": "sha384-82kMg3F3cR6NxNEL4hJLN1QI1dIMvDq2rCuOPSXfz1hZW8tlVYtwsAVSD4g8CQbb",
+    "cxcore.js": "sha384-wkvKTwBmk52zvrSUw1IW13q2YlCK+ZUYGYaalLejaXakVgrxt2cj1vq12kW+5Me/",
+    "cxcore-no-return-call.js": "sha384-voee50BlJS4SmSF+j+Pc+fK0kHEBobrPNzG977Q+5BQFcpoxFCAb63yD7qVVIf7H",
+    "workerclock.js": "sha384-q1QfNxsmgb/KzqKkRMZiWRwKrDODwHF39accIHWrBDfetxBnWW4uQt59v0tjrgRX",
+    "cxcore.wasm": "sha384-+X4PHR1FMVjsm6o215DGBIiTfPrSfA0u7+H1E5zY2aYIBWndkt27tp3oqT72L903",
+    "cxcore-no-return-call.wasm": "sha384-18wXNym/BoiLF7XnBYQ4aCH1+9jCU1WE5OSxSaQ8M3uj97IvjGOG6pM9oPEKClVK",
+    "tun/tailscale_tun_auto.js": "sha384-Xzl+Eq8w2K9sE1b/3finrjV/OIvXGQq3FA7/5d3/7Ap6gOFwaSIemW0gYeLBbWWq",
+    "fail.wasm": "sha384-OLBgp1GsljhM2TJ+sbHjaiH9txEUvgdDTAzHv2P24donTt6/529l+9Ua0vFImLlb",
+    "cxbridge.wasm": "sha384-OLBgp1GsljhM2TJ+sbHjaiH9txEUvgdDTAzHv2P24donTt6/529l+9Ua0vFImLlb",
+    "cheerpOS.wasm": "sha384-OLBgp1GsljhM2TJ+sbHjaiH9txEUvgdDTAzHv2P24donTt6/529l+9Ua0vFImLlb",
+    "tun/tailscale_tun_auto.wasm": "sha384-OLBgp1GsljhM2TJ+sbHjaiH9txEUvgdDTAzHv2P24donTt6/529l+9Ua0vFImLlb"
+  }
+}

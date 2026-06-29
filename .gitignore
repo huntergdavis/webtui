@@ -5,12 +5,13 @@ dist/
 .env
 .env.*
 
-# Self-hosted engine + disk image live under public/ (Vite static dir) and are large /
-# generated build artifacts, not source. Build them with scripts/build-disk.sh (Phase 2)
-# and the vendor fetch step (Phase 3).
+# Disk images: large generated artifacts (scripts/build-disk.sh). Not source.
 *.ext2
 public/disk/blocks/
-public/vendor/cx*.wasm
-public/vendor/cx.esm.js
-public/vendor/tsconnect.wasm
+
+# Self-hosted CheerpX engine: large binaries fetched by scripts/fetch-engine.sh.
+# Commit ONLY the integrity manifest (the pinned hashes), never the binaries.
+public/vendor/*
+!public/vendor/engine.manifest.json
+
 .vite/

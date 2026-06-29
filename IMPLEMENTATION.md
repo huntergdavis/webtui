@@ -63,8 +63,12 @@ and the lite image exists. ✅ (full 359 MB, lite 304 MB; both fsck-clean, root-
 
 ## Phase 3 — Boot the VM (no network yet)
 
+0. 🧩 Self-host the engine: `scripts/fetch-engine.sh` downloads pinned CheerpX 1.2.8 into
+   `public/vendor/` and writes `engine.manifest.json` (SHA-384 pins; `verify` subcommand).
+   Load it via a **runtime** dynamic-import URL (not a literal — Vite would 404 it).
 1. 🧩 `terminal.js`: `initTerminal(el)`, `wireTerminalToVM(cx, term)` (PLAN §7.1).
-   - ⚠ Confirm the CheerpX console hook (`setCustomConsole`/equivalent) name.
+   - ✅ VERIFIED 2026-06: `const send = cx.setCustomConsole(buf=>term.write(buf), cols, rows)`;
+     `send(byte)` feeds stdin (no `sendData`/`setConsoleSize`). Mounts: `ext2` / + `devs` /dev.
 2. 🧩 `vm.js`: `initVM(storage, term)` — **`HttpBytesDevice`** → `OverlayDevice` →
    `CheerpX.Linux.create` (PLAN §4.2; ✅ VERIFIED 2026-06 — `CloudDevice` removed, use
    `HttpBytesDevice.create("/disk/debian.ext2")`). Self-host `cx.esm.js` + wasm in

@@ -155,23 +155,31 @@ async function initVM(storage, term) {
   // ✅ VERIFIED 2026-06: CloudDevice was removed. A remote ext2 is loaded by
   // HttpBytesDevice (single file, HTTP range requests), then made writable with an
   // OverlayDevice over the IDBDevice. Self-host the .ext2 same-origin (COEP/R-F1).
+  // ⚠ The static host MUST send Last-Modified or ETag on the .ext2 (and support range);
+  // otherwise HttpBytesDevice throws "Server didn't include header `Last-Modified` nor
+  // `Etag`". Vite dev and Cloudflare Pages both do. (VERIFIED 2026-06.)
   const rootfs  = await CheerpX.HttpBytesDevice.create("/disk/debian.ext2"); // read-only base
   const overlay = await CheerpX.OverlayDevice.create(rootfs, storage.idb); // §5
   const cx = await CheerpX.Linux.create({
     mounts: [
-      { type: "ext2", path: "/",    dev: overlay },
-      { type: "dir",  path: "/dev", dev: await CheerpX.DataDevice.create() },
+      { type: "ext2", path: "/",   dev: overlay },
+      { type: "devs", path: "/dev" },               // ✅ VERIFIED: use `devs`, no dev object
       // /proc, /sys handled internally by CheerpX
     ],
-    networkInterface: buildNetworkInterface(term),  // §6 — created now, auth deferred
+    // networkInterface is NOT passed here in 1.2.8 — networking is a separate
+    // TailscaleNetwork/DirectSocketsNetwork object attached in §6 (Phase 5).
   });
   return cx;
 }
 ```
-- `networkInterface` is constructed up front (CheerpX wants it at create time) but the **login is
-  not triggered** until the user clicks Connect — `loginUrlCb` only fires when the stack actually
-  needs to come up. (⚠VERIFY whether CheerpX brings the interface up eagerly; if so, gate by only
-  calling `login()`-equivalent on demand, or recreate the Linux instance — see §6.3.)
+- Load the engine itself with a **runtime-computed** dynamic import URL (`new URL("/vendor/
+  cx.esm.js", location.origin)`); a string literal makes Vite rewrite it to `?import` and fail
+  (you can't import from `public/`). The engine then resolves its own assets (cx_esm.js,
+  cxcore.wasm, blob workers) relative to that URL — so **production CSP needs
+  `worker-src 'self' blob:`** (the engine spawns blob workers). (VERIFIED 2026-06.)
+- ⚠ 1.2.8 networking is a separate `TailscaleNetwork`/`DirectSocketsNetwork` object (not a
+  `networkInterface` create-time field as the old plan assumed). Confirm in Phase 5 how/when it
+  attaches and whether login is deferrable to the Connect click — see §6.3.
 
 ### 4.3 `startShell(cx, term)`
 ```js
@@ -280,11 +288,13 @@ function initTerminal(el) {
   return term;
 }
 function wireTerminalToVM(cx, term) {
-  cx.setCustomConsole(                 // ⚠VERIFY exact CheerpX console hook name
-    (bytes) => term.write(bytes),      // VM stdout/stderr → xterm
-    term.cols, term.rows);
-  term.onData((data) => cx.sendData(data));  // keystrokes → VM stdin
-  term.onResize(({cols, rows}) => cx.setConsoleSize?.(cols, rows));
+  // ✅ VERIFIED 2026-06: setCustomConsole(writeFn(buf:Uint8Array, vt), cols, rows) RETURNS
+  // a send(byteCode) function — that is how stdin reaches the VM (one byte at a time);
+  // there is no cx.sendData. No setConsoleSize either — re-call setCustomConsole on resize.
+  let send = cx.setCustomConsole((buf) => term.write(buf), term.cols, term.rows);
+  const enc = new TextEncoder();
+  term.onData((data) => { for (const b of enc.encode(data)) send(b); }); // keystrokes → VM
+  term.onResize(({cols, rows}) => { send = cx.setCustomConsole((b)=>term.write(b), cols, rows); });
 }
 ```
 - Kitty protocol: out of scope for v1 (xterm.js doesn't speak it). xterm-256color + standard
