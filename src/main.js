@@ -18,6 +18,8 @@ import {
 import { wireVault } from "./vault.js";
 import { wireSettings } from "./settings.js";
 import { wireSoftKeys } from "./softkeys.js";
+import { initLauncher } from "./launcher.js";
+import { wireFind } from "./find.js";
 import { ENGINE_VERSION } from "./cheerpx.js";
 import { startBootProgress, setBootTitle, stopBootProgress } from "./progress.js";
 
@@ -232,9 +234,10 @@ async function main() {
     budget.lowMem ? "warn" : "ok"
   );
 
-  // 3. Terminal + display/accessibility settings (R-A5).
-  const { term, fit } = initTerminal(document.getElementById("screen"));
+  // 3. Terminal + display/accessibility settings (R-A5) + in-terminal search.
+  const { term, fit, search } = initTerminal(document.getElementById("screen"));
   wireSettings({ term, fit });
+  const find = wireFind(search, term);
 
   // 4–7. Storage -> VM -> wire -> shell. First boot is a real download (R9): show a live
   // progress overlay (elapsed + MB downloaded via the IDB cache growth) until the VM speaks.
@@ -247,10 +250,19 @@ async function main() {
     setBootTitle("Booting Debian — streaming disk…");
     const cx = await initVM(storage, { image: budget.image });
     // Tear the overlay down the moment the VM produces its first byte of output.
-    const termIO = wireTerminalToVM(cx, term, { onFirstOutput: stopBootProgress });
+    const termIO = wireTerminalToVM(cx, term, {
+      onFirstOutput: stopBootProgress,
+      onFind: find.toggle,
+    });
     wireNetworking(cx);
     wireVault(termIO.type);
-    wireSoftKeys({ type: termIO.type, setNextKeyTransform: termIO.setNextKeyTransform });
+    wireSoftKeys({
+      type: termIO.type,
+      setNextKeyTransform: termIO.setNextKeyTransform,
+      paste: termIO.paste,
+    });
+    // ?app=owner/repo -> fetch the repo's webtui.json and offer to install + run it.
+    initLauncher({ type: termIO.type, connect: () => connectNetwork(cx) });
     term.focus();
     // Resolves only when the shell exits; if it does, tell the user rather than hang.
     const { status } = await startShell(cx);

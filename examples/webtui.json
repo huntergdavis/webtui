@@ -1,0 +1,9 @@
+{
+  "name": "Example TUI",
+  "description": "Drop this file at your repo root as webtui.json. Link to it with https://hunterdavis.com/webtui/?app=OWNER/REPO and people can install + run your TUI live in the browser.",
+  "network": true,
+  "apt": ["python3", "python3-pip"],
+  "install": ["pip3 install -r requirements.txt"],
+  "run": "python3 -m yourapp",
+  "workdir": "REPO"
+}

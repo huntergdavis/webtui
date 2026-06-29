@@ -14,7 +14,7 @@
     <!-- CSP for Pages, where response-header CSP isn't available; mirrors public/_headers
          minus header-only directives (frame-ancestors/XFO — see README Phase 8 note). All
          heavy assets (engine, disk) are same-origin, so connect-src only adds Tailscale. -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://*.tailscale.com wss://*.tailscale.com https://login.tailscale.com; worker-src 'self' blob:; child-src 'self' blob:; base-uri 'self'; form-action 'self'" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://*.tailscale.com wss://*.tailscale.com https://login.tailscale.com https://raw.githubusercontent.com; worker-src 'self' blob:; child-src 'self' blob:; base-uri 'self'; form-action 'self'" />
 
     <title>webtui — browser Linux terminal</title>
     <meta
@@ -27,6 +27,20 @@
     <!-- Boot/error banner: where ensureCrossOriginIsolated() and boot failures speak up.
          Labels, not glyphs (R-A5). -->
     <div id="banner" class="banner" role="status" aria-live="polite" hidden></div>
+
+    <!-- App launcher (?app=owner/repo). Shows the manifest + EXACT commands and requires an
+         explicit click before anything runs (R2: untrusted URL param). -->
+    <div id="launcher" class="launcher" role="dialog" aria-modal="true"
+         aria-labelledby="launcher-title" hidden>
+      <div class="launcher-card">
+        <h2 id="launcher-title" class="launcher-h">App launcher</h2>
+        <div id="launcher-body"></div>
+        <div class="launcher-actions">
+          <button id="launcher-run" type="button">Install &amp; Run</button>
+          <button id="launcher-cancel" type="button">Cancel</button>
+        </div>
+      </div>
+    </div>
 
     <header class="topbar">
       <h1 class="brand">webtui</h1>
@@ -106,6 +120,14 @@
         </div>
       </div>
     </main>
+
+    <!-- In-terminal search (Ctrl+Shift+F). -->
+    <div id="findbar" class="findbar" hidden>
+      <input id="find-input" type="text" placeholder="Find in terminal…" aria-label="Find in terminal" />
+      <button id="find-prev" type="button" title="Previous match">↑</button>
+      <button id="find-next" type="button" title="Next match">↓</button>
+      <button id="find-close" type="button" title="Close (Esc)">✕</button>
+    </div>
 
     <!-- Soft-key bar for touch sessions (Esc/Tab/Ctrl/Alt/arrows/pipe). Hidden on
          fine-pointer devices unless toggled; auto-shown on coarse pointers (PLAN §14.4). -->

@@ -14,6 +14,7 @@ const SEQ = {
   "←": "\x1b[D",
   "→": "\x1b[C",
   "^C": "\x03", // SIGINT — common enough to warrant a dedicated key
+  "^L": "\x0c", // clear screen
 };
 
 /** Map a printable char to its Ctrl-<char> control byte (Ctrl-A=0x01 … Ctrl-_=0x1f). */
@@ -32,7 +33,7 @@ function toAlt(ch) {
 
 /**
  * Build + wire the soft-key bar.
- * @param {{type:(s:string)=>void, setNextKeyTransform:(fn:Function)=>void}} io
+ * @param {{type:(s:string)=>void, setNextKeyTransform:(fn:Function)=>void, paste?:()=>void}} io
  */
 export function wireSoftKeys(io) {
   const bar = document.getElementById("softkeys");
@@ -92,4 +93,5 @@ export function wireSoftKeys(io) {
   for (const [label, seq] of Object.entries(SEQ)) {
     mkBtn(label, () => io.type(seq));
   }
+  if (io.paste) mkBtn("Paste", () => io.paste());
 }

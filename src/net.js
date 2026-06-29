@@ -36,6 +36,18 @@ const EXIT_NODE_KEY = "webtui.exitNodePref"; // persisted preferred exit-node na
 
 let _onExitNodes = null; // UI callback: (nodes[], activeName|null) => void
 let _connected = false;
+let _runWaiters = []; // resolved when the tunnel reaches Running
+
+/** True once the tunnel has reached the Running state. */
+export function isConnected() {
+  return _connected;
+}
+
+/** Resolves when the tunnel is Running (immediately if it already is). */
+export function whenRunning() {
+  if (_connected) return Promise.resolve();
+  return new Promise((resolve) => _runWaiters.push(resolve));
+}
 
 /**
  * Register a callback that receives the exit-node list whenever the netmap updates.
@@ -88,6 +100,9 @@ function onState(state) {
   if (state === RUNNING) {
     _connected = true;
     setButtonEnabled("btn-connect", false);
+    const waiters = _runWaiters;
+    _runWaiters = [];
+    waiters.forEach((r) => r());
   }
 }
 

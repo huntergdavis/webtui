@@ -341,3 +341,90 @@ body.hc {
   color: var(--bg);
   border-color: var(--accent);
 }
+
+/* ---- App launcher (?app=owner/repo) ------------------------------------- */
+.launcher {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.7);
+}
+.launcher-card {
+  width: min(40rem, 100%);
+  max-height: 85vh;
+  overflow: auto;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.25rem 1.5rem;
+}
+.launcher-h {
+  margin: 0 0 0.75rem;
+  font-size: 1.1rem;
+}
+.launcher-desc {
+  margin: 0 0 0.75rem;
+  color: var(--fg-dim);
+}
+.launcher-net {
+  margin: 0 0 0.75rem;
+  color: var(--warn);
+  font-size: 0.9rem;
+}
+.launcher-label {
+  margin: 0 0 0.4rem;
+  font-size: 0.85rem;
+  color: var(--fg-dim);
+}
+.launcher-cmds {
+  margin: 0 0 1rem;
+  padding: 0.75rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-family: var(--term-font);
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-x: auto;
+}
+.launcher-err {
+  margin: 0 0 1rem;
+  color: var(--err);
+}
+.launcher-actions {
+  display: flex;
+  gap: 0.6rem;
+  justify-content: flex-end;
+}
+#launcher-run {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ---- Find bar (Ctrl+Shift+F) -------------------------------------------- */
+.findbar {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  padding: 0.4rem 0.6rem;
+  background: var(--bg-elev);
+  border-top: 1px solid var(--border);
+}
+.findbar input {
+  flex: 1 1 auto;
+  font-family: inherit;
+  font-size: 0.9rem;
+  padding: 0.35rem 0.5rem;
+  background: var(--bg);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.findbar button {
+  min-width: 2.2rem;
+}

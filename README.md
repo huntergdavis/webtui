@@ -15,6 +15,30 @@ networking through a **Tailscale** tailnet and your existing exit node.
   WebSocket/HTTPS via Tailscale DERP relays to **your exit node**, which reaches the internet.
 - **No server you operate:** static hosting only; the exit node is the one machine involved.
 
+## Launch a TUI from a link (`?app=`)
+Add a small **`webtui.json`** to your repo root, then link to
+`https://hunterdavis.com/webtui/?app=OWNER/REPO` — webtui fetches the manifest (over CORS
+from `raw.githubusercontent.com`), shows a panel with the **exact commands**, and after you
+click **Install & Run** it clones, installs prerequisites, and runs your TUI in the tab. If
+the manifest needs network it makes you connect Tailscale first. See
+[`examples/webtui.json`](examples/webtui.json).
+
+```jsonc
+{
+  "name": "My TUI",            // required; shown in the launch panel
+  "description": "…",          // optional
+  "network": true,             // default true; clone/apt need the tunnel -> connect first
+  "apt": ["python3"],          // optional prerequisite apt packages
+  "install": ["pip3 install -r requirements.txt"],  // string or array; run after clone
+  "run": "python3 -m myapp",   // string or array; the app (only runs if install succeeded)
+  "workdir": "myapp"           // optional; defaults to the repo name
+}
+```
+
+URL params: `?app=owner/repo` (or a full `https://…/webtui.json`), optional `&ref=branch`
+and `&manifest=path/to/file.json`. **Security:** a `?app=` link is untrusted — nothing runs
+until you click, and every command is shown first (the VM may be on your tailnet, R2).
+
 ## Documents
 - **[research.md](research.md)** — is this possible, and the alternatives (the "why").
 - **[PLAN.md](PLAN.md)** — full design, function-level, plus a multi-round red team.
