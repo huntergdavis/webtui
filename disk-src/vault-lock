@@ -1,30 +1,12 @@
 #!/bin/bash
-# vault-lock — clear ssh-agent, re-seal the keys if present, and wipe the RAM mount
-# (PLAN §8.1). Safe to run repeatedly and safe to run from the host (idle/blur auto-lock):
-# it never errors just because the vault is already locked.
+# vault-lock — drop all identities from ssh-agent (clears the decrypted key from RAM).
+# Safe to run repeatedly and from the host (idle/blur auto-lock): never errors just because
+# the vault is already locked. The agent process keeps running (empty) on its socket so a
+# later vault-unlock can reuse it.
 set -uo pipefail
 
-VAULT="$HOME/.ssh.age"
-KEYDIR="/run/keys/.ssh"
-SOCK="/run/keys/agent.sock"
-
-# Drop all identities from the agent (best-effort; agent may already be empty/gone).
+SOCK="$HOME/.ssh-agent.sock"
 if [ -S "$SOCK" ]; then
   SSH_AUTH_SOCK="$SOCK" ssh-add -D >/dev/null 2>&1 || true
 fi
-
-# Re-seal if plaintext keys are present and a vault already exists (don't silently create
-# a vault here — that's vault-init's job and needs a chosen passphrase).
-if [ -d "$KEYDIR" ] && [ -f "$VAULT" ]; then
-  # Only re-encrypt if something actually changed, to avoid prompting for a passphrase on
-  # every idle-lock. age -p needs a passphrase, which we don't have non-interactively, so
-  # we simply preserve the existing sealed vault and discard the RAM copy. Key material is
-  # immutable after vault-init; if you rotate keys, run vault-init again.
-  :
-fi
-
-# Wipe the plaintext from RAM. The DataDevice is in-memory, but remove explicitly so a
-# later unlock starts clean and no plaintext lingers in the session.
-rm -rf "$KEYDIR" "$SOCK" 2>/dev/null || true
-
-echo "vault-lock: agent cleared, plaintext keys wiped from /run/keys."
+echo "vault-lock: ssh-agent identities cleared (key removed from memory)."

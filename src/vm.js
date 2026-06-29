@@ -38,21 +38,17 @@ export async function initVM(storage, opts = {}) {
   const block = await CheerpX.HttpBytesDevice.create(diskUrl);
   const overlay = await CheerpX.OverlayDevice.create(block, storage.idb);
 
-  // In-memory device for the secret vault's plaintext keys (PLAN §8.1). DataDevice is
-  // session-only RAM, NOT backed by IndexedDB, so decrypted keys mounted at /run/keys
-  // never persist to the overlay — the core R1 fix. Mounted as a "dir" device.
-  const keysDev = await CheerpX.DataDevice.create();
-
   // In-memory device for the offline app launcher (?app=). The PAGE fetches a repo's files
   // over CORS and writes them here with appDev.writeFile(); the guest sees them at /opt
   // with no VM network — so dependency-free TUIs run without Tailscale. Returned below.
+  // (DataDevice is host-writable but GUEST-READ-ONLY, which is why the launcher extracts
+  // into the writable overlay and the vault keeps keys in ssh-agent RAM, not on a mount.)
   const appDev = await CheerpX.DataDevice.create();
 
   const config = {
     mounts: [
       { type: "ext2", path: "/", dev: overlay },
       { type: "devs", path: "/dev" },
-      { type: "dir", path: "/run/keys", dev: keysDev },
       { type: "dir", path: "/opt", dev: appDev },
       // /proc and /sys are provided internally by CheerpX.
     ],

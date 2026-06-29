@@ -4,13 +4,14 @@
 umask 077
 
 # If a vault-unlock session is live, every shell should find the agent on the fixed socket.
-if [ -S /run/keys/agent.sock ]; then
-  export SSH_AUTH_SOCK=/run/keys/agent.sock
+SOCK="$HOME/.ssh-agent.sock"
+if [ -S "$SOCK" ]; then
+  export SSH_AUTH_SOCK="$SOCK"
 fi
 
 # One-line status hint at login (no secrets printed).
 if [ -f "$HOME/.ssh.age" ]; then
-  if [ -S /run/keys/agent.sock ] && SSH_AUTH_SOCK=/run/keys/agent.sock ssh-add -l >/dev/null 2>&1; then
+  if [ -n "${SSH_AUTH_SOCK:-}" ] && ssh-add -l >/dev/null 2>&1; then
     echo "vault: unlocked (ssh-agent active). 'vault-lock' to clear."
   else
     echo "vault: locked. 'vault-unlock' to load your SSH key."

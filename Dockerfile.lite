@@ -27,5 +27,4 @@ WORKDIR /root
 COPY disk-src/vault-init disk-src/vault-unlock disk-src/vault-lock /usr/local/bin/
 COPY disk-src/profile-vault.sh /etc/profile.d/vault.sh
 RUN chmod 0755 /usr/local/bin/vault-init /usr/local/bin/vault-unlock /usr/local/bin/vault-lock \
- && chmod 0644 /etc/profile.d/vault.sh \
- && mkdir -p /run/keys && chmod 700 /run/keys
+ && chmod 0644 /etc/profile.d/vault.sh

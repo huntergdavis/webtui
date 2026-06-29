@@ -1,48 +1,41 @@
 #!/bin/bash
-# vault-init — create an SSH keypair and seal it into an age-encrypted archive at rest
-# (PLAN §8.1, the R1 fix). Plaintext keys live ONLY in the RAM mount /run/keys, which the
-# host backs with a CheerpX DataDevice (in-memory, never written to the IndexedDB overlay).
-# At rest, only ciphertext (~/.ssh.age) sits on the persisted disk.
+# vault-init — create an ed25519 SSH key and seal the PRIVATE key with age (PLAN §8.1,
+# the R1 fix). The CheerpX guest has no writable RAM filesystem (tmpfs isn't implemented;
+# DataDevice mounts are guest-read-only), so the decrypted key is never kept on a mount:
+# it lives only in ssh-agent memory after `vault-unlock` (see that script). At rest only
+# the age ciphertext (~/.ssh.age) is on the persisted disk; the public key is not secret.
 set -euo pipefail
 
 VAULT="$HOME/.ssh.age"
-KEYDIR="/run/keys/.ssh"
-LINK="$HOME/.ssh"
-
-# /run/keys must be the host's in-memory DataDevice mount — refuse to write plaintext keys
-# anywhere that could be persisted to the overlay.
-if [ ! -d /run/keys ]; then
-  echo "vault-init: /run/keys (RAM mount) is missing — the VM was not booted with the" >&2
-  echo "            DataDevice mount. Refusing to create keys on persistent storage." >&2
-  exit 1
-fi
+PUB="$HOME/.ssh/id_ed25519.pub"
 
 if [ -f "$VAULT" ]; then
-  echo "vault-init: $VAULT already exists. Use 'vault-unlock' instead, or remove it first." >&2
+  echo "vault-init: $VAULT already exists. Use 'vault-unlock', or remove it first." >&2
   exit 1
 fi
 
 umask 077
-mkdir -p "$KEYDIR"
+mkdir -p "$HOME/.ssh"
 
 read -r -p "Comment/label for this key (e.g. you@browser): " COMMENT
 COMMENT="${COMMENT:-webtui@browser}"
 
-echo "==> generating ed25519 keypair (no per-key passphrase; the age vault is the secret)"
-ssh-keygen -t ed25519 -N "" -C "$COMMENT" -f "$KEYDIR/id_ed25519"
+# ssh-keygen must write to a file; use a temp, seal it, then shred. This brief moment is
+# the only time plaintext touches the (persisted) disk — minimized + shredded, init-only.
+TMP="$(mktemp -d)"
+trap 'shred -u "$TMP"/id_ed25519 2>/dev/null || rm -f "$TMP"/id_ed25519; rm -rf "$TMP"' EXIT
 
-# Point ~/.ssh at the RAM keydir so ssh/git find keys when unlocked, nothing when locked.
-rm -rf "$LINK"
-ln -s "$KEYDIR" "$LINK"
+echo "==> generating ed25519 keypair"
+ssh-keygen -t ed25519 -N "" -C "$COMMENT" -f "$TMP/id_ed25519" -q
 
-echo "==> sealing the keys into $VAULT (age passphrase encryption)"
-echo "    Choose a STRONG passphrase — it is the only thing protecting your keys at rest."
-tar -C /run/keys -cf - .ssh | age -p -o "$VAULT"
+echo "==> sealing the PRIVATE key into $VAULT (choose a STRONG age passphrase)"
+age -p -o "$VAULT" "$TMP/id_ed25519"
 chmod 600 "$VAULT"
+install -m 0644 "$TMP/id_ed25519.pub" "$PUB"
 
 echo
-echo "==> done. Your PUBLIC key (add this to GitHub -> Settings -> SSH keys):"
+echo "==> done. Your PUBLIC key (add to GitHub -> Settings -> SSH keys):"
 echo "------------------------------------------------------------------------"
-cat "$KEYDIR/id_ed25519.pub"
+cat "$PUB"
 echo "------------------------------------------------------------------------"
-echo "Run 'vault-lock' to wipe the plaintext from RAM, 'vault-unlock' to restore it."
+echo "Run 'vault-unlock' to load the key into ssh-agent; 'vault-lock' to clear it."
