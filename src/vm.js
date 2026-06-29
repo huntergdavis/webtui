@@ -7,6 +7,7 @@
 // (CloudDevice still exists but is for wss:// disks; HttpBytesDevice is the HTTP path.)
 
 import { loadCheerpX } from "./cheerpx.js";
+import { buildNetworkInterface } from "./net.js";
 
 /** Disk image URLs (served from public/disk/, range-enabled). */
 export const DISK_URLS = {
@@ -16,8 +17,13 @@ export const DISK_URLS = {
 
 /**
  * Build the VM. `storage.idb` is the IndexedDB overlay from initStorage().
+ *
+ * The Tailscale networkInterface is attached here at create() time (the only time
+ * CheerpX accepts it), but it stays DORMANT — no packets leave until net.js calls
+ * cx.networkLogin() from the Connect button (PLAN §6, VERIFIED 2026-06). Pass
+ * `{ net: false }` to boot with no interface at all (offline-only).
  * @param {{idb:any}} storage
- * @param {{image?: "full"|"lite"}} [opts]
+ * @param {{image?: "full"|"lite", net?: boolean}} [opts]
  */
 export async function initVM(storage, opts = {}) {
   const CheerpX = await loadCheerpX();
@@ -26,14 +32,19 @@ export async function initVM(storage, opts = {}) {
   const block = await CheerpX.HttpBytesDevice.create(diskUrl);
   const overlay = await CheerpX.OverlayDevice.create(block, storage.idb);
 
-  const cx = await CheerpX.Linux.create({
+  const config = {
     mounts: [
       { type: "ext2", path: "/", dev: overlay },
       { type: "devs", path: "/dev" },
       // /proc and /sys are provided internally by CheerpX.
     ],
-    // networkInterface / TailscaleNetwork is added in Phase 5 (deferred until Connect).
-  });
+  };
+  if (opts.net !== false) {
+    // Dormant until cx.networkLogin() (Connect button) — see net.js.
+    config.networkInterface = buildNetworkInterface();
+  }
+
+  const cx = await CheerpX.Linux.create(config);
   return cx;
 }
 

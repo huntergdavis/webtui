@@ -9,6 +9,12 @@ import { detectPlatformBudget } from "./platform.js";
 import { initTerminal, wireTerminalToVM } from "./terminal.js";
 import { initStorage, clearDisk } from "./storage.js";
 import { initVM, startShell } from "./vm.js";
+import {
+  connectNetwork,
+  onExitNodes,
+  preferredExitNode,
+  setPreferredExitNode,
+} from "./net.js";
 import { ENGINE_VERSION } from "./cheerpx.js";
 import { startBootProgress, setBootTitle, stopBootProgress } from "./progress.js";
 
@@ -114,6 +120,62 @@ function wireFactoryReset() {
   });
 }
 
+/**
+ * Enable + wire the Connect button and the exit-node picker (Phase 5). The VM was booted
+ * with a dormant Tailscale interface; Connect calls cx.networkLogin() to bring it up.
+ * @param {object} cx
+ */
+function wireNetworking(cx) {
+  const connectBtn = document.getElementById("btn-connect");
+  if (connectBtn) {
+    setButtonEnabled("btn-connect", true);
+    connectBtn.addEventListener("click", () => {
+      connectNetwork(cx).catch(() => {
+        /* connectNetwork already surfaced the error + re-enabled the button */
+      });
+    });
+  }
+
+  // Populate the exit-node picker as netmaps arrive. The vendored auto backend routes
+  // through the first online exit node; the picker records the user's preference (shown
+  // and persisted) and reflects the active node, but can't force a different one.
+  const picker = document.getElementById("exitnode-picker");
+  if (picker) {
+    onExitNodes((nodes, activeName) => {
+      const pref = preferredExitNode();
+      picker.innerHTML = "";
+      if (!nodes.length) {
+        const opt = document.createElement("option");
+        opt.textContent = "no exit nodes in tailnet";
+        opt.value = "";
+        picker.appendChild(opt);
+        picker.disabled = true;
+        return;
+      }
+      picker.disabled = false;
+      for (const n of nodes) {
+        const opt = document.createElement("option");
+        opt.value = n.name;
+        const tags = [];
+        if (n.name === activeName) tags.push("active");
+        if (!n.online) tags.push("offline");
+        opt.textContent = n.name + (tags.length ? ` (${tags.join(", ")})` : "");
+        if (n.name === (pref || activeName)) opt.selected = true;
+        picker.appendChild(opt);
+      }
+    });
+    picker.addEventListener("change", () => {
+      setPreferredExitNode(picker.value || null);
+      showBanner(
+        "Preferred exit node saved. Note: the current backend auto-routes through the " +
+          "first online exit node, so this preference is recorded for display and will " +
+          "apply on a future backend that supports manual selection.",
+        "warn"
+      );
+    });
+  }
+}
+
 async function main() {
   // 1. The gate that blocks everything else.
   try {
@@ -151,6 +213,7 @@ async function main() {
     const cx = await initVM(storage, { image: budget.image });
     // Tear the overlay down the moment the VM produces its first byte of output.
     wireTerminalToVM(cx, term, { onFirstOutput: stopBootProgress });
+    wireNetworking(cx);
     term.focus();
     // Resolves only when the shell exits; if it does, tell the user rather than hang.
     const { status } = await startShell(cx);

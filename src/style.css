@@ -113,6 +113,25 @@ button.danger:hover:not(:disabled) {
   color: #ffd6d6;
 }
 
+.picker-label {
+  align-self: center;
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+select#exitnode-picker {
+  font-family: inherit;
+  font-size: 0.9rem;
+  padding: 0.4rem 0.5rem;
+  background: var(--bg);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  max-width: 14rem;
+}
+select#exitnode-picker:disabled {
+  opacity: 0.5;
+}
+
 .screen {
   position: relative; /* anchor the boot overlay */
   flex: 1 1 auto;

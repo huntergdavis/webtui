@@ -19,6 +19,10 @@
       <h1 class="brand">webtui</h1>
       <div class="controls">
         <button id="btn-connect" type="button" disabled>Connect (Tailscale)</button>
+        <label class="picker-label" for="exitnode-picker">Exit node</label>
+        <select id="exitnode-picker" aria-label="Exit node" disabled>
+          <option value="">connect first…</option>
+        </select>
         <button id="btn-unlock" type="button" disabled>Unlock vault</button>
         <button id="btn-reset" type="button" class="danger" disabled
           title="Delete the writable overlay and reboot from a pristine disk">
