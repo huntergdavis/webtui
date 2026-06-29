@@ -106,11 +106,74 @@ button:focus-visible {
 }
 
 .screen {
+  position: relative; /* anchor the boot overlay */
   flex: 1 1 auto;
   min-height: 0;
   overflow: hidden;
   background: #000;
   font-family: var(--term-font);
+}
+
+/* Boot overlay — covers the terminal until the VM produces its first output. */
+.boot-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  padding: 1.5rem;
+}
+.boot-overlay[hidden] {
+  display: none;
+}
+.boot-card {
+  width: min(560px, 100%);
+  text-align: center;
+}
+.boot-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin-bottom: 0.9rem;
+}
+.boot-bar {
+  position: relative;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--border);
+  overflow: hidden;
+}
+/* Indeterminate sweep: download size is unknown (lazy blocks), so show liveness, not a
+   false percentage. The numeric stats below give the real, honest progress. */
+.boot-bar-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 35%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  animation: boot-sweep 1.25s ease-in-out infinite;
+}
+@keyframes boot-sweep {
+  0% { left: -35%; }
+  100% { left: 100%; }
+}
+.boot-stats {
+  margin-top: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg);
+  font-weight: 600;
+}
+.boot-hint {
+  margin-top: 0.9rem;
+  font-size: 0.85rem;
+  color: var(--fg-dim);
+  line-height: 1.5;
+}
+@media (prefers-reduced-motion: reduce) {
+  .boot-bar-fill { animation-duration: 3s; }
 }
 
 .statusbar {

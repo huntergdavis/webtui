@@ -23,8 +23,20 @@
       </div>
     </header>
 
-    <!-- The terminal mounts here in Phase 3. -->
-    <main id="screen" class="screen" aria-label="Terminal"></main>
+    <!-- The terminal mounts here. The boot overlay sits on top until first VM output. -->
+    <main id="screen" class="screen" aria-label="Terminal">
+      <div id="boot-overlay" class="boot-overlay" role="status" aria-live="polite" hidden>
+        <div class="boot-card">
+          <div id="boot-title" class="boot-title">Starting…</div>
+          <div class="boot-bar"><div class="boot-bar-fill"></div></div>
+          <div id="boot-stats" class="boot-stats">—</div>
+          <div class="boot-hint">
+            First boot streams the Debian disk on demand and JIT-compiles it. Later boots
+            are cached and fast. You can leave this tab open while it loads.
+          </div>
+        </div>
+      </div>
+    </main>
 
     <!-- Status bar: every item is text-labeled, never glyph-only (R-A5, R-A4). -->
     <footer class="statusbar" aria-label="Status">

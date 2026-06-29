@@ -10,6 +10,7 @@ import { initTerminal, wireTerminalToVM } from "./terminal.js";
 import { initStorage } from "./storage.js";
 import { initVM, startShell } from "./vm.js";
 import { ENGINE_VERSION } from "./cheerpx.js";
+import { startBootProgress, setBootTitle, stopBootProgress } from "./progress.js";
 
 /** Thrown when the page cannot host the VM (e.g. not cross-origin isolated). */
 export class BootError extends Error {
@@ -60,19 +61,23 @@ async function main() {
   // 3. Terminal.
   const { term } = initTerminal(document.getElementById("screen"));
 
-  // 4–7. Storage -> VM -> wire -> shell. First boot is a real download (R9), so narrate.
+  // 4–7. Storage -> VM -> wire -> shell. First boot is a real download (R9): show a live
+  // progress overlay (elapsed + MB downloaded via the IDB cache growth) until the VM speaks.
   try {
-    showBanner(`Loading CheerpX ${ENGINE_VERSION} + Debian (first boot downloads blocks)…`, "ok");
+    await startBootProgress(`Loading CheerpX ${ENGINE_VERSION}…`);
     const storage = await initStorage();
+    setBootTitle("Booting Debian — streaming disk…");
     const cx = await initVM(storage, { image: budget.image });
-    wireTerminalToVM(cx, term);
-    showBanner(null);
+    // Tear the overlay down the moment the VM produces its first byte of output.
+    wireTerminalToVM(cx, term, { onFirstOutput: stopBootProgress });
     term.focus();
     // Resolves only when the shell exits; if it does, tell the user rather than hang.
     const { status } = await startShell(cx);
+    stopBootProgress();
     showBanner(`Shell exited (status ${status}). Reload to start a new session.`, "warn");
   } catch (err) {
     console.error(err);
+    stopBootProgress();
     const msg = String(err && err.message || err);
     if (/memory|RangeError|allocat/i.test(msg)) {
       showBanner(

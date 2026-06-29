@@ -36,10 +36,21 @@ export function initTerminal(el) {
  * Wire VM stdout/stderr -> xterm and keystrokes -> VM stdin.
  * CheerpX 1.2.8: `setCustomConsole(writeFn(buf:Uint8Array, vt), cols, rows)` returns a
  * `send(byteCode)` used to push one input byte at a time (VERIFIED 2026-06).
+ * @param {object} cx
+ * @param {import("@xterm/xterm").Terminal} term
+ * @param {{onFirstOutput?: () => void}} [hooks]
  * @returns {() => void} a teardown function (best-effort)
  */
-export function wireTerminalToVM(cx, term) {
-  let send = cx.setCustomConsole((buf) => term.write(buf), term.cols, term.rows);
+export function wireTerminalToVM(cx, term, hooks = {}) {
+  let firstSeen = false;
+  const write = (buf) => {
+    if (!firstSeen && buf && buf.length) {
+      firstSeen = true;
+      try { hooks.onFirstOutput?.(); } catch { /* non-fatal */ }
+    }
+    term.write(buf);
+  };
+  let send = cx.setCustomConsole(write, term.cols, term.rows);
 
   const enc = new TextEncoder();
   const dataSub = term.onData((data) => {
@@ -50,7 +61,7 @@ export function wireTerminalToVM(cx, term) {
   // No setConsoleSize in 1.2.8 — re-register the console at the new geometry on resize so
   // the guest sees the right cols/rows. Swap the live `send`.
   const resizeSub = term.onResize(({ cols, rows }) => {
-    send = cx.setCustomConsole((buf) => term.write(buf), cols, rows);
+    send = cx.setCustomConsole(write, cols, rows);
   });
 
   return () => { dataSub.dispose(); resizeSub.dispose(); };
