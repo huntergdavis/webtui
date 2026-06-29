@@ -29,8 +29,34 @@
           title="Delete the writable overlay and reboot from a pristine disk">
           Factory reset
         </button>
+        <button id="btn-settings" type="button" aria-expanded="false"
+          aria-controls="settings-panel" title="Display &amp; accessibility settings">
+          Settings
+        </button>
       </div>
     </header>
+
+    <!-- Display + accessibility settings (R-A5). Toggled by the Settings button. -->
+    <section id="settings-panel" class="settings-panel" aria-label="Settings" hidden>
+      <label class="set-row">
+        <span>Font</span>
+        <select id="set-font"></select>
+      </label>
+      <label class="set-row">
+        <span>Size</span>
+        <input id="set-size" type="range" min="9" max="28" step="1" />
+        <output id="set-size-val" class="set-val">—</output>
+      </label>
+      <label class="set-row">
+        <span>Line height</span>
+        <input id="set-lh" type="range" min="1" max="2" step="0.1" />
+        <output id="set-lh-val" class="set-val">—</output>
+      </label>
+      <label class="set-row set-row-check">
+        <input id="set-contrast" type="checkbox" />
+        <span>High contrast</span>
+      </label>
+    </section>
 
     <!-- The terminal mounts here. The boot overlay sits on top until first VM output. -->
     <main id="screen" class="screen" aria-label="Terminal">
@@ -46,6 +72,10 @@
         </div>
       </div>
     </main>
+
+    <!-- Soft-key bar for touch sessions (Esc/Tab/Ctrl/Alt/arrows/pipe). Hidden on
+         fine-pointer devices unless toggled; auto-shown on coarse pointers (PLAN §14.4). -->
+    <nav id="softkeys" class="softkeys" aria-label="On-screen keys" hidden></nav>
 
     <!-- Status bar: every item is text-labeled, never glyph-only (R-A5, R-A4). -->
     <footer class="statusbar" aria-label="Status">

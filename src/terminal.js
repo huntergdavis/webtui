@@ -59,7 +59,18 @@ export function wireTerminalToVM(cx, term, hooks = {}) {
     const bytes = enc.encode(str); // handle UTF-8 input, not just ASCII
     for (let i = 0; i < bytes.length; i++) send(bytes[i]);
   };
-  const dataSub = term.onData(feed);
+  // Optional one-shot transform for the next real keystroke (sticky Ctrl/Alt from the
+  // soft-key bar). Applies to keyboard input only; `type` (programmatic) bypasses it.
+  let inputTransform = null;
+  const dataSub = term.onData((data) => {
+    let d = data;
+    if (inputTransform) {
+      const t = inputTransform;
+      inputTransform = null; // one-shot
+      d = t(data);
+    }
+    feed(d);
+  });
 
   // No setConsoleSize in 1.2.8 — re-register the console at the new geometry on resize so
   // the guest sees the right cols/rows. Swap the live `send`.
@@ -70,5 +81,7 @@ export function wireTerminalToVM(cx, term, hooks = {}) {
   return {
     dispose: () => { dataSub.dispose(); resizeSub.dispose(); },
     type: feed,
+    /** Arm a one-shot transform applied to the next real keystroke (sticky modifiers). */
+    setNextKeyTransform: (fn) => { inputTransform = fn; },
   };
 }

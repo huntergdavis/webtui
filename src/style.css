@@ -230,3 +230,80 @@ select#exitnode-picker:disabled {
 .status-value[data-level="error"] {
   color: var(--err);
 }
+
+/* ---- Phase 7: accessibility + UX ---------------------------------------- */
+
+/* Optional self-hosted dyslexia-friendly font. Add the file with
+   scripts/fetch-fonts.sh -> public/vendor/fonts/. CSP font-src 'self' permits it; if the
+   file is absent the "legible" option falls back to its stack, so this never breaks. */
+@font-face {
+  font-family: "OpenDyslexic Mono";
+  src: url("/vendor/fonts/OpenDyslexicMono-Regular.woff2") format("woff2");
+  font-display: swap;
+}
+
+/* High-contrast theme (R-A5): pure black/white + a high-visibility accent. The xterm
+   canvas theme is swapped in settings.js to match. */
+body.hc {
+  --bg: #000000;
+  --bg-elev: #000000;
+  --fg: #ffffff;
+  --fg-dim: #e0e0e0;
+  --accent: #ffff00;
+  --ok: #00ff7f;
+  --warn: #ffd400;
+  --err: #ff5c5c;
+  --border: #ffffff;
+}
+
+.settings-panel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 1.5rem;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background: var(--bg-elev);
+  border-bottom: 1px solid var(--border);
+}
+.set-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+.set-row > span {
+  color: var(--fg-dim);
+}
+.set-row-check {
+  gap: 0.4rem;
+}
+.set-val {
+  min-width: 2.5rem;
+  color: var(--fg-dim);
+  font-variant-numeric: tabular-nums;
+}
+.settings-panel select,
+.settings-panel input[type="range"] {
+  font-family: inherit;
+  accent-color: var(--accent);
+}
+
+.softkeys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding: 0.4rem 0.6rem;
+  background: var(--bg-elev);
+  border-top: 1px solid var(--border);
+}
+.softkey {
+  font-size: 0.95rem;
+  min-width: 2.6rem;
+  min-height: 2.4rem; /* comfortable touch target */
+  padding: 0.3rem 0.6rem;
+}
+.softkey-mod.armed {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+}

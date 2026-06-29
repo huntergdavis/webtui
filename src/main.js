@@ -16,6 +16,8 @@ import {
   setPreferredExitNode,
 } from "./net.js";
 import { wireVault } from "./vault.js";
+import { wireSettings } from "./settings.js";
+import { wireSoftKeys } from "./softkeys.js";
 import { ENGINE_VERSION } from "./cheerpx.js";
 import { startBootProgress, setBootTitle, stopBootProgress } from "./progress.js";
 
@@ -199,8 +201,9 @@ async function main() {
     budget.lowMem ? "warn" : "ok"
   );
 
-  // 3. Terminal.
-  const { term } = initTerminal(document.getElementById("screen"));
+  // 3. Terminal + display/accessibility settings (R-A5).
+  const { term, fit } = initTerminal(document.getElementById("screen"));
+  wireSettings({ term, fit });
 
   // 4–7. Storage -> VM -> wire -> shell. First boot is a real download (R9): show a live
   // progress overlay (elapsed + MB downloaded via the IDB cache growth) until the VM speaks.
@@ -216,6 +219,7 @@ async function main() {
     const termIO = wireTerminalToVM(cx, term, { onFirstOutput: stopBootProgress });
     wireNetworking(cx);
     wireVault(termIO.type);
+    wireSoftKeys({ type: termIO.type, setNextKeyTransform: termIO.setNextKeyTransform });
     term.focus();
     // Resolves only when the shell exits; if it does, tell the user rather than hang.
     const { status } = await startShell(cx);
