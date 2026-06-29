@@ -2,23 +2,52 @@
 // Kept deliberately tiny: this file is part of the trusted page-code surface (§11/R2),
 // so it does only DOM text updates — no network, no eval, no secret handling.
 
+let _bannerTimer = null;
+const BANNER_AUTO_MS = 10000; // info/warn banners self-dismiss; errors stay until replaced.
+
+/** Cancel any pending banner auto-dismiss (e.g. when showing a sticky link). */
+export function clearBannerTimer() {
+  if (_bannerTimer) {
+    clearTimeout(_bannerTimer);
+    _bannerTimer = null;
+  }
+}
+
+/** Hide the top banner now. */
+export function hideBanner() {
+  const el = document.getElementById("banner");
+  if (!el) return;
+  clearBannerTimer();
+  el.hidden = true;
+  el.textContent = "";
+  el.removeAttribute("data-level");
+  el.onclick = null;
+}
+
 /**
  * Show the top banner. Levels: "ok" | "warn" | "error". Pass null to hide.
+ * "ok"/"warn" auto-dismiss after a few seconds (so transient notices like the storage
+ * warning don't sit there forever); "error" persists. Any banner is click-to-dismiss.
  * @param {string|null} message
  * @param {"ok"|"warn"|"error"} [level]
  */
 export function showBanner(message, level = "ok") {
   const el = document.getElementById("banner");
   if (!el) return;
+  clearBannerTimer();
   if (message == null) {
-    el.hidden = true;
-    el.textContent = "";
-    el.removeAttribute("data-level");
+    hideBanner();
     return;
   }
   el.hidden = false;
   el.dataset.level = level;
   el.textContent = message;
+  el.onclick = hideBanner;
+  el.title = "Click to dismiss";
+  el.style.cursor = "pointer";
+  if (level !== "error") {
+    _bannerTimer = setTimeout(hideBanner, BANNER_AUTO_MS);
+  }
 }
 
 /**

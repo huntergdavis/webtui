@@ -18,7 +18,7 @@
 // No authKey is ever hardcoded; auth is interactive SSO via loginUrlCb. The node is
 // registered ephemeral (Tailscale ACL policy, PLAN §10), so re-auth on reload is normal.
 
-import { setStatus, showBanner, setButtonEnabled } from "./ui.js";
+import { setStatus, showBanner, setButtonEnabled, clearBannerTimer } from "./ui.js";
 
 /** Tailscale ipn state codes (mirror of tun/ State enum). */
 const STATE = {
@@ -190,8 +190,11 @@ function showInlineAuthLink(url) {
     console.warn("[webtui] Tailscale login URL (popup blocked):", url);
     return;
   }
+  clearBannerTimer(); // this link must NOT auto-dismiss — the user needs it.
   el.hidden = false;
   el.dataset.level = "warn";
+  el.onclick = null; // don't dismiss on click; the link itself is the action.
+  el.removeAttribute("title");
   el.textContent = "Popup blocked — open Tailscale sign-in manually: ";
   const a = document.createElement("a");
   a.href = url;
